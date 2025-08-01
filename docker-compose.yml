@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PHP Symfony Backend
+  php:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: call-center-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/vendor:/var/www/html/vendor
+    environment:
+      - APP_ENV=dev
+      - DATABASE_URL=mysql://root:password@mysql:3306/call_center
+    depends_on:
+      - mysql
+    networks:
+      - call-center-network
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: call-center-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: call_center
+      MYSQL_USER: call_center_user
+      MYSQL_PASSWORD: call_center_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - call-center-network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: call-center-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - php
+    networks:
+      - call-center-network
+
+  # Redis (opcjonalnie dla cache)
+  redis:
+    image: redis:7-alpine
+    container_name: call-center-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - call-center-network
+
+volumes:
+  mysql_data:
+
+networks:
+  call-center-network:
+    driver: bridge 
