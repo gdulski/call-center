@@ -25,21 +25,19 @@ RUN mv /root/.symfony5/bin/symfony /usr/local/bin/symfony
 # Copy composer files first
 COPY composer.json composer.lock ./
 
-RUN composer validate
-
+# # Copy application code
+COPY . .
 
 # Install dependencies (allow dev dependencies for development)
-# RUN composer install --no-interaction --optimize-autoloader
+RUN composer install --no-interaction --optimize-autoloader
 
-# # Copy application code
-# COPY . .
 
 # # Set permissions
-# RUN chown -R www-data:www-data /var/www/html \
-#     && chmod -R 755 /var/www/html
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
 
 # # Expose port
-# EXPOSE 8000
+EXPOSE 8000
 
 # # Start Symfony server
-# CMD ["symfony", "server:start", "--host=0.0.0.0", "--port=8000", "--no-tls"] 
+CMD ["symfony", "server:start", "--host=0.0.0.0", "--port=8000", "--no-tls"] 
