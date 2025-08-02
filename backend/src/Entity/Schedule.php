@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\ScheduleRepository;
+use App\Enum\ScheduleStatus;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
