@@ -27,10 +27,14 @@ class User
     #[ORM\OneToMany(mappedBy: 'agent', targetEntity: AgentAvailability::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
     private Collection $agentAvailabilities;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: ScheduleShiftAssignment::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
+    private Collection $scheduleShiftAssignments;
+
     public function __construct()
     {
         $this->agentQueueTypes = new ArrayCollection();
         $this->agentAvailabilities = new ArrayCollection();
+        $this->scheduleShiftAssignments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -108,6 +112,31 @@ class User
     public function removeAgentAvailability(AgentAvailability $agentAvailability): static
     {
         $this->agentAvailabilities->removeElement($agentAvailability);
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ScheduleShiftAssignment>
+     */
+    public function getScheduleShiftAssignments(): Collection
+    {
+        return $this->scheduleShiftAssignments;
+    }
+
+    public function addScheduleShiftAssignment(ScheduleShiftAssignment $scheduleShiftAssignment): static
+    {
+        if (!$this->scheduleShiftAssignments->contains($scheduleShiftAssignment)) {
+            $this->scheduleShiftAssignments->add($scheduleShiftAssignment);
+            $scheduleShiftAssignment->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeScheduleShiftAssignment(ScheduleShiftAssignment $scheduleShiftAssignment): static
+    {
+        $this->scheduleShiftAssignments->removeElement($scheduleShiftAssignment);
 
         return $this;
     }
