@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\AgentQueueTypeRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AgentQueueTypeRepository::class)]
 class AgentQueueType
@@ -19,7 +20,12 @@ class AgentQueueType
 
     #[ORM\ManyToOne(targetEntity: QueueType::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['user:read'])]
     private QueueType $queueType;
+
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: false, options: ['default' => 0.00])]
+    #[Groups(['user:read'])]
+    private float $efficiencyScore = 0.00;
 
     public function getId(): ?int
     {
@@ -46,6 +52,18 @@ class AgentQueueType
     public function setQueueType(QueueType $queueType): static
     {
         $this->queueType = $queueType;
+
+        return $this;
+    }
+
+    public function getEfficiencyScore(): float
+    {
+        return $this->efficiencyScore;
+    }
+
+    public function setEfficiencyScore(float $efficiencyScore): static
+    {
+        $this->efficiencyScore = $efficiencyScore;
 
         return $this;
     }

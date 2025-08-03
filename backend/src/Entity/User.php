@@ -7,6 +7,7 @@ use App\Enum\UserRole;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User
@@ -14,15 +15,19 @@ class User
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['user:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, enumType: UserRole::class)]
+    #[Groups(['user:read'])]
     private UserRole $role;
 
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: AgentQueueType::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[Groups(['user:read'])]
     private Collection $agentQueueTypes;
 
     #[ORM\OneToMany(mappedBy: 'agent', targetEntity: AgentAvailability::class, orphanRemoval: true, cascade: ['persist', 'remove'])]

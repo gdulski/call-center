@@ -14,11 +14,11 @@ class QueueType
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['queue_type:read'])]
+    #[Groups(['queue_type:read', 'user:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['queue_type:read'])]
+    #[Groups(['queue_type:read', 'user:read'])]
     private ?string $name = null;
 
     #[ORM\OneToMany(mappedBy: 'queueType', targetEntity: CallQueueVolumePrediction::class, orphanRemoval: true, cascade: ['persist', 'remove'])]

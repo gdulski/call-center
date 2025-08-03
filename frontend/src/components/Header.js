@@ -7,9 +7,8 @@ function Header() {
       <h1>Call Center</h1>
       <nav className="nav">
         <Link to="/">Dashboard</Link>
-        <Link to="/calls">Połączenia</Link>
-        <Link to="/agents">Agenci</Link>
         <Link to="/queue-types">Typy kolejek</Link>
+        <Link to="/users">Użytkownicy</Link>
       </nav>
     </header>
   );
