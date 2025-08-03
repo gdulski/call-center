@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Calls from './pages/Calls';
 import Agents from './pages/Agents';
+import QueueTypes from './pages/QueueTypes';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/calls" element={<Calls />} />
             <Route path="/agents" element={<Agents />} />
+            <Route path="/queue-types" element={<QueueTypes />} />
           </Routes>
         </main>
       </div>
