@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import QueueTypes from './pages/QueueTypes';
 import Users from './pages/Users';
+import Schedule from './pages/Schedule';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/queue-types" element={<QueueTypes />} />
             <Route path="/users" element={<Users />} />
+            <Route path="/schedules" element={<Schedule />} />
           </Routes>
         </main>
       </div>

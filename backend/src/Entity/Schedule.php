@@ -7,6 +7,7 @@ use App\Enum\ScheduleStatus;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ScheduleRepository::class)]
 class Schedule
@@ -14,19 +15,24 @@ class Schedule
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['schedule:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255, enumType: ScheduleStatus::class)]
+    #[Groups(['schedule:read', 'schedule:write'])]
     private ScheduleStatus $status;
 
     #[ORM\Column(type: 'date')]
+    #[Groups(['schedule:read', 'schedule:write'])]
     private \DateTimeInterface $weekStartDate;
 
     #[ORM\ManyToOne(targetEntity: QueueType::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['schedule:read'])]
     private QueueType $queueType;
 
     #[ORM\OneToMany(mappedBy: 'schedule', targetEntity: ScheduleShiftAssignment::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[Groups(['schedule:read'])]
     private Collection $shiftAssignments;
 
     public function __construct()
@@ -58,7 +64,15 @@ class Schedule
 
     public function setWeekStartDate(\DateTimeInterface $weekStartDate): static
     {
-        $this->weekStartDate = $weekStartDate;
+        // Ustaw datę na poniedziałek danego tygodnia
+        $monday = clone $weekStartDate;
+        $dayOfWeek = (int)$monday->format('N'); // 1 = poniedziałek, 7 = niedziela
+        if ($dayOfWeek > 1) {
+            $monday->modify('-' . ($dayOfWeek - 1) . ' days');
+        }
+        $monday->setTime(0, 0, 0);
+        
+        $this->weekStartDate = $monday;
 
         return $this;
     }
@@ -86,6 +100,7 @@ class Schedule
     /**
      * Get week identifier in format YYYY-WW
      */
+    #[Groups(['schedule:read'])]
     public function getWeekIdentifier(): string
     {
         return $this->weekStartDate->format('o-W');

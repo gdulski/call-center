@@ -71,4 +71,21 @@ class CallQueueVolumePredictionRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Znajdź predykcje dla konkretnego QueueType w określonym zakresie dat
+     */
+    public function findByQueueTypeAndDateRange(int $queueTypeId, \DateTimeInterface $startDate, \DateTimeInterface $endDate): array
+    {
+        return $this->createQueryBuilder('c')
+            ->andWhere('c.queueType = :queueTypeId')
+            ->andWhere('c.hour >= :startDate')
+            ->andWhere('c.hour <= :endDate')
+            ->setParameter('queueTypeId', $queueTypeId)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->orderBy('c.hour', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

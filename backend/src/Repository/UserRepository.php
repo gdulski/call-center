@@ -38,4 +38,19 @@ class UserRepository extends ServiceEntityRepository
             $this->getEntityManager()->flush();
         }
     }
+
+    /**
+     * Znajdź agentów dla konkretnego typu kolejki
+     */
+    public function findAgentsByQueueType(int $queueTypeId): array
+    {
+        return $this->createQueryBuilder('u')
+            ->join('u.queueTypes', 'aqt')
+            ->andWhere('aqt.queueType = :queueTypeId')
+            ->andWhere('u.role = :role')
+            ->setParameter('queueTypeId', $queueTypeId)
+            ->setParameter('role', 'agent')
+            ->getQuery()
+            ->getResult();
+    }
 } 

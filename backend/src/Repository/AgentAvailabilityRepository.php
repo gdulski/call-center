@@ -38,4 +38,22 @@ class AgentAvailabilityRepository extends ServiceEntityRepository
             $this->getEntityManager()->flush();
         }
     }
+
+    /**
+     * Znajdź dostępności agentów w określonym zakresie dat
+     */
+    public function findByAgentsAndDateRange(array $agentIds, \DateTimeInterface $startDate, \DateTimeInterface $endDate): array
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.agent IN (:agentIds)')
+            ->andWhere('a.startDate >= :startDate')
+            ->andWhere('a.endDate <= :endDate')
+            ->setParameter('agentIds', $agentIds)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->orderBy('a.agent', 'ASC')
+            ->addOrderBy('a.startDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 } 

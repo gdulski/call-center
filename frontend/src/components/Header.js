@@ -9,6 +9,7 @@ function Header() {
         <Link to="/">Dashboard</Link>
         <Link to="/queue-types">Typy kolejek</Link>
         <Link to="/users">Użytkownicy</Link>
+        <Link to="/schedules">Harmonogramy</Link>
       </nav>
     </header>
   );
