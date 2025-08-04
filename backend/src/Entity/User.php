@@ -31,6 +31,7 @@ class User
     private Collection $agentQueueTypes;
 
     #[ORM\OneToMany(mappedBy: 'agent', targetEntity: AgentAvailability::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[Groups(['user:read'])]
     private Collection $agentAvailabilities;
 
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: ScheduleShiftAssignment::class, orphanRemoval: true, cascade: ['persist', 'remove'])]

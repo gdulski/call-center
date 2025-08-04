@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import UserList from './UserList';
 import UserForm from './UserForm';
+import AgentAvailability from '../Availability/AgentAvailability';
 import userService from '../../services/userService';
 import './User.css';
 
@@ -12,6 +13,8 @@ const UserManagement = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [availabilityAgent, setAvailabilityAgent] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -74,6 +77,20 @@ const UserManagement = () => {
     setShowForm(true);
     setError('');
     setSuccess('');
+  };
+
+  // Funkcja do obsługi zarządzania dostępnością
+  const handleManageAvailability = (user) => {
+    setAvailabilityAgent(user);
+    setShowAvailabilityModal(true);
+    setError('');
+    setSuccess('');
+  };
+
+  // Funkcja do zamykania modalu dostępności
+  const handleCloseAvailabilityModal = () => {
+    setShowAvailabilityModal(false);
+    setAvailabilityAgent(null);
   };
 
   // Funkcja do anulowania formularza
@@ -158,9 +175,33 @@ const UserManagement = () => {
         <UserList
           users={users}
           onEdit={handleEdit}
+          onManageAvailability={handleManageAvailability}
           isLoading={loading}
         />
       </div>
+
+      {/* Modal dostępności */}
+      {showAvailabilityModal && availabilityAgent && (
+        <div className="modal-overlay">
+          <div className="modal-content availability-modal">
+            <div className="modal-header">
+              <h3>Dostępność agenta: {availabilityAgent.name}</h3>
+              <button 
+                onClick={handleCloseAvailabilityModal}
+                className="modal-close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <AgentAvailability 
+                agentId={availabilityAgent.id} 
+                agentName={availabilityAgent.name} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

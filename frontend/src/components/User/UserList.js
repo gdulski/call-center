@@ -1,6 +1,6 @@
 import React from 'react';
 
-const UserList = ({ users, onEdit, isLoading = false }) => {
+const UserList = ({ users, onEdit, onManageAvailability, isLoading = false }) => {
   if (isLoading) {
     return <div className="loading">Ładowanie użytkowników...</div>;
   }
@@ -70,6 +70,15 @@ const UserList = ({ users, onEdit, isLoading = false }) => {
                   >
                     Edytuj
                   </button>
+                  {user.role === 'Agent' && onManageAvailability && (
+                    <button
+                      onClick={() => onManageAvailability(user)}
+                      className="btn btn-availability"
+                      title="Zarządzaj dostępnością"
+                    >
+                      Dostępność
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

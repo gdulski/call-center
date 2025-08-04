@@ -40,4 +40,4 @@ RUN chown -R www-data:www-data /var/www/html \
 EXPOSE 8000
 
 # # Start Symfony server
-CMD ["symfony", "server:start", "--host=0.0.0.0", "--port=8000", "--no-tls"] 
+CMD ["symfony", "server:start", "--listen-ip=0.0.0.0", "--port=8000", "--no-tls"] 

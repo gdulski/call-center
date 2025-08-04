@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\AgentAvailabilityRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AgentAvailabilityRepository::class)]
 class AgentAvailability
@@ -11,6 +12,7 @@ class AgentAvailability
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['availability:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
@@ -18,9 +20,11 @@ class AgentAvailability
     private User $agent;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['availability:read', 'availability:write'])]
     private \DateTimeInterface $startDate;
 
     #[ORM\Column(type: 'datetime')]
+    #[Groups(['availability:read', 'availability:write'])]
     private \DateTimeInterface $endDate;
 
     public function getId(): ?int

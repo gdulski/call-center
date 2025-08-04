@@ -24,7 +24,7 @@ class AgentQueueType
     private QueueType $queueType;
 
     #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: false, options: ['default' => 0.00])]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:write'])]
     private float $efficiencyScore = 0.00;
 
     public function getId(): ?int
