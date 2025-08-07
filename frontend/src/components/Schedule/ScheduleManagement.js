@@ -17,10 +17,13 @@ const ScheduleManagement = () => {
     try {
       setLoading(true);
       const data = await scheduleService.getAll();
-      setSchedules(data);
+      // Upewnij się, że data jest tablicą
+      setSchedules(Array.isArray(data) ? data : []);
       setError('');
     } catch (err) {
-      setError(err.message);
+      console.error('Błąd podczas ładowania harmonogramów:', err);
+      setError(err.message || 'Wystąpił błąd podczas ładowania harmonogramów');
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -59,14 +62,14 @@ const ScheduleManagement = () => {
           setGenerateLoading(true);
           setError('');
           
-          // Utwórz harmonogram
+          // Utwórz harmonogram (teraz automatycznie generuje przypisania)
           const newSchedule = await scheduleService.create({
             queueTypeId: formData.queueTypeId,
             weekStartDate: formData.weekStartDate,
             status: 'draft'
           });
           
-          setSuccess('Harmonogram został utworzony pomyślnie.');
+          setSuccess('Harmonogram został utworzony i wygenerowany pomyślnie.');
           
           // Zamknij formularz i odśwież listę
           setShowGenerateForm(false);
@@ -92,7 +95,7 @@ const ScheduleManagement = () => {
               onClick={handleShowGenerateForm}
               className="btn btn-primary"
             >
-              Generuj harmonogram
+              Utwórz i wygeneruj harmonogram
             </button>
           )}
         </div>

@@ -23,10 +23,11 @@ class ScheduleService {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const responseData = await response.json();
+        return responseData.data || responseData;
     }
 
     async getById(id) {
@@ -39,10 +40,11 @@ class ScheduleService {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const responseData = await response.json();
+        return responseData.data || responseData;
     }
 
     async create(scheduleData) {
@@ -56,10 +58,11 @@ class ScheduleService {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || errorData.errors?.join(', ') || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.message || errorData.error || errorData.errors?.join(', ') || `HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const responseData = await response.json();
+        return responseData.data || responseData;
     }
 
     async update(id, scheduleData) {
@@ -73,10 +76,11 @@ class ScheduleService {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || errorData.errors?.join(', ') || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.message || errorData.error || errorData.errors?.join(', ') || `HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const responseData = await response.json();
+        return responseData.data || responseData;
     }
 
     async delete(id) {
@@ -89,10 +93,11 @@ class ScheduleService {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
         }
 
-        return await response.json();
+        const responseData = await response.json();
+        return responseData.data || responseData;
     }
 
 

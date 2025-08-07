@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -40,4 +40,4 @@ RUN chown -R www-data:www-data /var/www/html \
 EXPOSE 8000
 
 # # Start Symfony server
-CMD ["symfony", "server:start", "--listen-ip=0.0.0.0", "--port=8000", "--no-tls"] 
+CMD ["symfony", "server:start", "--listen-ip=0.0.0.0", "--port=8000", "--no-tls", "--no-interaction", "--allow-http"] 

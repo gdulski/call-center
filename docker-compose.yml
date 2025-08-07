@@ -19,6 +19,7 @@ services:
       - mysql
     networks:
       - call-center-network
+    restart: unless-stopped
 
   # MySQL Database
   mysql:

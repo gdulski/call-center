@@ -55,16 +55,8 @@ const ScheduleGenerateForm = ({ onSubmit, onCancel, isLoading = false }) => {
       const weekNumber = parseInt(selectedWeek);
       if (weekNumber < 1 || weekNumber > 53) {
         newErrors.weekPeriod = 'Numer tygodnia musi być między 1 a 53';
-      } else {
-        // Sprawdź czy tydzień nie jest w przeszłości
-        const selectedDate = getDateOfISOWeek(parseInt(selectedYear), weekNumber);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (selectedDate < today) {
-          newErrors.weekPeriod = 'Tydzień nie może być w przeszłości';
-        }
       }
+      // Usunięto ograniczenie dla tygodni w przeszłości
     }
 
     setErrors(newErrors);

@@ -3,190 +3,394 @@
 namespace App\Controller\Api;
 
 use App\Entity\Schedule;
+use App\Service\ScheduleGenerationService;
+use App\Service\ILPOptimizationService;
 use App\Repository\ScheduleRepository;
 use App\Repository\QueueTypeRepository;
 use App\Enum\ScheduleStatus;
-use App\Service\ScheduleGenerationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Psr\Log\LoggerInterface;
 
-#[Route('/schedules')]
+#[Route('/schedules', name: 'api_schedules_')]
 class ScheduleController extends AbstractController
 {
     public function __construct(
+        private EntityManagerInterface $entityManager,
         private ScheduleRepository $scheduleRepository,
         private QueueTypeRepository $queueTypeRepository,
-        private EntityManagerInterface $entityManager,
+        private ScheduleGenerationService $scheduleGenerationService,
+        private ILPOptimizationService $ilpOptimizationService,
         private SerializerInterface $serializer,
         private ValidatorInterface $validator,
-        private ScheduleGenerationService $scheduleGenerationService
+        private LoggerInterface $logger
     ) {}
 
-    #[Route('', name: 'api_schedule_index', methods: ['GET'])]
-    public function index(Request $request): JsonResponse
+    #[Route('', name: 'list', methods: ['GET'])]
+    public function list(): JsonResponse
     {
-        $queueTypeId = $request->query->get('queueTypeId');
-        $weekStartDate = $request->query->get('weekStartDate');
+        $schedules = $this->scheduleRepository->findAllOrderedByWeekStartDate();
         
-        if ($queueTypeId && $weekStartDate) {
-            try {
-                $date = new \DateTime($weekStartDate);
-                $schedule = $this->scheduleRepository->findByQueueTypeAndWeek($queueTypeId, $date);
-                $schedules = $schedule ? [$schedule] : [];
-            } catch (\Exception $e) {
-                return $this->json(['error' => 'Invalid date format'], Response::HTTP_BAD_REQUEST);
-            }
-        } else {
-            $schedules = $this->scheduleRepository->findAllOrderedByWeekStartDate();
+        $data = [];
+        foreach ($schedules as $schedule) {
+            
+            $data[] = [
+                'id' => $schedule->getId(),
+                'queueType' => [
+                    'id' => $schedule->getQueueType()->getId(),
+                    'name' => $schedule->getQueueType()->getName()
+                ],
+                'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
+                'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
+                'weekIdentifier' => $schedule->getWeekIdentifier(),
+                'status' => $schedule->getStatus()->value,
+                'totalAssignedHours' => $schedule->getTotalAssignedHours(),
+                'assignmentsCount' => $schedule->getShiftAssignments()->count()
+            ];
         }
         
-        return $this->json($schedules, Response::HTTP_OK, [], [
-            'groups' => ['schedule:read']
+        return $this->json([
+            'success' => true,
+            'data' => $data
         ]);
     }
 
-    #[Route('', name: 'api_schedule_create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-
-        if (!isset($data['queueTypeId']) || !isset($data['weekStartDate'])) {
-            return $this->json(['error' => 'Queue type ID and week start date are required'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $queueType = $this->queueTypeRepository->find($data['queueTypeId']);
-        if (!$queueType) {
-            return $this->json(['error' => 'Queue type not found'], Response::HTTP_NOT_FOUND);
-        }
-
-        try {
-            $weekStartDate = new \DateTime($data['weekStartDate']);
-        } catch (\Exception $e) {
-            return $this->json(['error' => 'Invalid date format'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Create a temporary schedule to get the normalized week start date
-        $tempSchedule = new Schedule();
-        $tempSchedule->setWeekStartDate($weekStartDate);
-        $normalizedWeekStartDate = $tempSchedule->getWeekStartDate();
-        
-        // Check if schedule already exists for this queue type and week identifier
-        $weekIdentifier = $normalizedWeekStartDate->format('o-W');
-        $existingSchedule = $this->scheduleRepository->findByQueueTypeAndWeekIdentifier($data['queueTypeId'], $weekIdentifier);
-        if ($existingSchedule) {
-            return $this->json(['error' => 'Schedule already exists for this queue type and week (YYYY-WW format)'], Response::HTTP_CONFLICT);
-        }
-
-        $schedule = new Schedule();
-        $schedule->setQueueType($queueType);
-        $schedule->setWeekStartDate($weekStartDate);
-        
-        // Ustaw status - jeśli podano string, przekonwertuj na enum
-        $status = $data['status'] ?? 'draft';
-        if (is_string($status)) {
-            $status = ScheduleStatus::from($status);
-        }
-        $schedule->setStatus($status);
-
-        $errors = $this->validator->validate($schedule);
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[] = $error->getMessage();
-            }
-            return $this->json(['errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
-        }
-
-        $this->entityManager->persist($schedule);
-        $this->entityManager->flush();
-
-        // Automatycznie uruchom generowanie przypisań
-        try {
-            $generationResult = $this->scheduleGenerationService->generateSchedule($schedule->getId());
-        } catch (\Exception $e) {
-            // Log error but don't fail the schedule creation
-            // You might want to add proper logging here
-        }
-
-        return $this->json($schedule, Response::HTTP_CREATED, [], [
-            'groups' => ['schedule:read']
-        ]);
-    }
-
-    #[Route('/{id}', name: 'api_schedule_show', methods: ['GET'])]
+    #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
         $schedule = $this->scheduleRepository->find($id);
         
         if (!$schedule) {
-            return $this->json(['error' => 'Schedule not found'], Response::HTTP_NOT_FOUND);
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
         }
-
-        return $this->json($schedule, Response::HTTP_OK, [], [
-            'groups' => ['schedule:read']
+        
+        $assignments = [];
+        foreach ($schedule->getShiftAssignments() as $assignment) {
+            $assignments[] = [
+                'id' => $assignment->getId(),
+                'agentId' => $assignment->getUser()->getId(),
+                'agentName' => $assignment->getUser()->getName(),
+                'startTime' => $assignment->getStartTime()->format('Y-m-d H:i'),
+                'endTime' => $assignment->getEndTime()->format('Y-m-d H:i'),
+                'duration' => $assignment->getDurationInHours()
+            ];
+        }
+        
+        $data = [
+            'id' => $schedule->getId(),
+            'queueType' => [
+                'id' => $schedule->getQueueType()->getId(),
+                'name' => $schedule->getQueueType()->getName()
+            ],
+            'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
+            'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
+            'status' => $schedule->getStatus()->value,
+            'totalAssignedHours' => $schedule->getTotalAssignedHours(),
+            'assignments' => $assignments
+        ];
+        
+        return $this->json([
+            'success' => true,
+            'data' => $data
         ]);
     }
 
-    #[Route('/{id}', name: 'api_schedule_update', methods: ['PUT'])]
-    public function update(int $id, Request $request): JsonResponse
+    #[Route('', name: 'create', methods: ['POST'])]
+    public function create(Request $request): JsonResponse
+    {
+        
+
+        $data = json_decode($request->getContent(), true);
+        
+        if (!$data) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Nieprawidłowe dane JSON'
+            ], 400);
+        }
+        
+        // Walidacja wymaganych pól
+        if (!isset($data['queueTypeId']) || !isset($data['weekStartDate'])) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Brakuje wymaganych pól: queueTypeId, weekStartDate'
+            ], 400);
+        }
+        
+        $queueType = $this->queueTypeRepository->find($data['queueTypeId']);
+        if (!$queueType) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Typ kolejki nie został znaleziony'
+            ], 404);
+        }
+        
+        try {
+            $weekStartDate = new \DateTime($data['weekStartDate']);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Nieprawidłowy format daty'
+            ], 400);
+        }
+        
+        // Sprawdź czy harmonogram już istnieje dla tego typu kolejki i tygodnia
+        $existingSchedule = $this->scheduleRepository->findByQueueTypeAndWeek(
+            $queueType->getId(),
+            $weekStartDate
+        );
+        
+        if ($existingSchedule) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram dla tego typu kolejki i tygodnia już istnieje'
+            ], 409);
+        }
+        
+        try {
+            // Rozpocznij transakcję
+            $this->entityManager->beginTransaction();
+            
+            // Utwórz nowy harmonogram
+            $schedule = new Schedule();
+            $schedule->setQueueType($queueType);
+            $schedule->setWeekStartDate($weekStartDate);
+            $schedule->setStatus(ScheduleStatus::DRAFT);
+
+
+            $this->entityManager->persist($schedule);
+            $this->entityManager->flush();
+            
+            // Wygeneruj przypisania w tej samej transakcji
+            $generationResult = $this->scheduleGenerationService->generateSchedule($schedule->getId());
+
+            // Zatwierdź transakcję
+            $this->entityManager->commit();
+            
+                                    
+            return $this->json([
+                'success' => true,
+                'message' => 'Harmonogram został utworzony i wygenerowany pomyślnie',
+                'data' => [
+                    'id' => $schedule->getId(),
+                    'queueType' => $queueType->getName(),
+                    'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
+                    'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
+                    'status' => $schedule->getStatus()->value,
+                    'generationResult' => $generationResult
+                ]
+            ], 201);
+            
+        } catch (\Exception $e) {
+            
+            // Wycofaj transakcję w przypadku błędu
+            $this->entityManager->rollback();
+            
+            return $this->json([
+                'success' => false,
+                'message' => 'Wystąpił błąd podczas tworzenia harmonogramu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/{id}/generate', name: 'generate', methods: ['POST'])]
+    public function generate(int $id): JsonResponse
+    {
+        // Opcjonalny endpoint do ponownego generowania harmonogramu
+        // (Harmonogramy są automatycznie generowane podczas tworzenia)
+        try {
+            $result = $this->scheduleGenerationService->generateSchedule($id);
+            
+            return $this->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data' => $result
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 404);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Wystąpił błąd podczas generowania harmonogramu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/{id}/optimize', name: 'optimize', methods: ['POST'])]
+    public function optimize(int $id): JsonResponse
     {
         $schedule = $this->scheduleRepository->find($id);
         
         if (!$schedule) {
-            return $this->json(['error' => 'Schedule not found'], Response::HTTP_NOT_FOUND);
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
         }
-
-        $data = json_decode($request->getContent(), true);
-
-        if (isset($data['status'])) {
-            $schedule->setStatus(ScheduleStatus::from($data['status']));
+        
+        try {
+            $result = $this->scheduleGenerationService->optimizeSchedule($id);
+            
+            return $this->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Wystąpił błąd podczas optymalizacji: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        if (isset($data['weekStartDate'])) {
-            try {
-                $weekStartDate = new \DateTime($data['weekStartDate']);
-                $schedule->setWeekStartDate($weekStartDate);
-            } catch (\Exception $e) {
-                return $this->json(['error' => 'Invalid date format'], Response::HTTP_BAD_REQUEST);
+    #[Route('/{id}/optimize-ilp', name: 'optimize_ilp', methods: ['POST'])]
+    public function optimizeILP(int $id): JsonResponse
+    {
+        $schedule = $this->scheduleRepository->find($id);
+        
+        if (!$schedule) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
+        }
+        
+        try {
+            // Usuń istniejące przypisania
+            $qb = $this->entityManager->createQueryBuilder();
+            $qb->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
+               ->where('ssa.schedule = :schedule')
+               ->setParameter('schedule', $schedule);
+            $qb->getQuery()->execute();
+            
+            // Wykonaj optymalizację ILP
+            $optimizedAssignments = $this->ilpOptimizationService->optimizeScheduleILP($schedule);
+            
+            // Zapisz nowe przypisania
+            foreach ($optimizedAssignments as $assignment) {
+                $this->entityManager->persist($assignment);
             }
+            $this->entityManager->flush();
+            
+            // Oblicz metryki
+            $metrics = $this->ilpOptimizationService->calculateScheduleMetrics($schedule);
+            $validation = $this->ilpOptimizationService->validateScheduleConstraints($schedule);
+            
+            return $this->json([
+                'success' => true,
+                'message' => 'Harmonogram został zoptymalizowany używając ILP',
+                'data' => [
+                    'assignmentsCount' => count($optimizedAssignments),
+                    'totalHours' => $metrics['totalHours'],
+                    'metrics' => $metrics,
+                    'validation' => $validation
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Wystąpił błąd podczas optymalizacji ILP: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        $errors = $this->validator->validate($schedule);
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[] = $error->getMessage();
-            }
-            return $this->json(['errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
+    #[Route('/{id}/metrics', name: 'metrics', methods: ['GET'])]
+    public function metrics(int $id): JsonResponse
+    {
+        $schedule = $this->scheduleRepository->find($id);
+        
+        if (!$schedule) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
         }
-
-        $this->entityManager->flush();
-
-        return $this->json($schedule, Response::HTTP_OK, [], [
-            'groups' => ['schedule:read']
+        
+        $metrics = $this->ilpOptimizationService->calculateScheduleMetrics($schedule);
+        $validation = $this->ilpOptimizationService->validateScheduleConstraints($schedule);
+        
+        return $this->json([
+            'success' => true,
+            'data' => [
+                'metrics' => $metrics,
+                'validation' => $validation
+            ]
         ]);
     }
 
-    #[Route('/{id}', name: 'api_schedule_delete', methods: ['DELETE'])]
+    #[Route('/{id}/status', name: 'update_status', methods: ['PATCH'])]
+    public function updateStatus(int $id, Request $request): JsonResponse
+    {
+        $schedule = $this->scheduleRepository->find($id);
+        
+        if (!$schedule) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
+        }
+        
+        $data = json_decode($request->getContent(), true);
+        
+        if (!isset($data['status'])) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Brakuje pola status'
+            ], 400);
+        }
+        
+        try {
+            $newStatus = ScheduleStatus::from($data['status']);
+            $schedule->setStatus($newStatus);
+            
+            $this->entityManager->flush();
+            
+            return $this->json([
+                'success' => true,
+                'message' => 'Status harmonogramu został zaktualizowany',
+                'data' => [
+                    'id' => $schedule->getId(),
+                    'status' => $schedule->getStatus()->value
+                ]
+            ]);
+        } catch (\ValueError $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Nieprawidłowy status'
+            ], 400);
+        }
+    }
+
+    #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
         $schedule = $this->scheduleRepository->find($id);
         
         if (!$schedule) {
-            return $this->json(['error' => 'Schedule not found'], Response::HTTP_NOT_FOUND);
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
         }
-
+        
         $this->entityManager->remove($schedule);
         $this->entityManager->flush();
-
-        return $this->json(['message' => 'Schedule deleted successfully'], Response::HTTP_OK);
+        
+        return $this->json([
+            'success' => true,
+            'message' => 'Harmonogram został usunięty'
+        ]);
     }
-
-
 }

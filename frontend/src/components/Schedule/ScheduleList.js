@@ -9,8 +9,9 @@ const ScheduleList = ({ schedules, onEdit, isLoading }) => {
   const getStatusText = (status) => {
     const statusMap = {
       'draft': 'Szkic',
+      'generated': 'Wygenerowany',
       'published': 'Opublikowany',
-      'finalized': 'Finalizowany'
+      'finalized': 'Sfinalizowany'
     };
     return statusMap[status] || status;
   };
@@ -18,6 +19,7 @@ const ScheduleList = ({ schedules, onEdit, isLoading }) => {
   const getStatusClass = (status) => {
     const classMap = {
       'draft': 'status-draft',
+      'generated': 'status-generated',
       'published': 'status-published',
       'finalized': 'status-finalized'
     };
@@ -28,10 +30,11 @@ const ScheduleList = ({ schedules, onEdit, isLoading }) => {
     return <div className="loading">Ładowanie harmonogramów...</div>;
   }
 
-  if (schedules.length === 0) {
+  if (!schedules || schedules.length === 0) {
     return (
       <div className="empty-state">
         <p>Brak harmonogramów do wyświetlenia.</p>
+        <p>Utwórz pierwszy harmonogram używając przycisku "Generuj harmonogram".</p>
       </div>
     );
   }
@@ -55,7 +58,10 @@ const ScheduleList = ({ schedules, onEdit, isLoading }) => {
             {schedules.map((schedule) => (
               <tr key={schedule.id}>
                 <td>{schedule.id}</td>
-                <td>{schedule.queueType?.name || 'N/A'}</td>
+                <td>
+                  {schedule.queueType?.name || 
+                   (typeof schedule.queueType === 'string' ? schedule.queueType : 'N/A')}
+                </td>
                 <td>{schedule.weekIdentifier || 'N/A'}</td>
                 <td>{formatDate(schedule.weekStartDate)}</td>
                 <td>

@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\AgentAvailability;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * @extends ServiceEntityRepository<AgentAvailability>
@@ -16,7 +17,7 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class AgentAvailabilityRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, AgentAvailability::class);
     }
@@ -44,7 +45,9 @@ class AgentAvailabilityRepository extends ServiceEntityRepository
      */
     public function findByAgentsAndDateRange(array $agentIds, \DateTimeInterface $startDate, \DateTimeInterface $endDate): array
     {
-        return $this->createQueryBuilder('a')
+        $this->logger->info('API Debug', ['findByAgentsAndDateRange']);
+
+        $query =  $this->createQueryBuilder('a')
             ->andWhere('a.agent IN (:agentIds)')
             ->andWhere('a.startDate >= :startDate')
             ->andWhere('a.endDate <= :endDate')
@@ -53,7 +56,11 @@ class AgentAvailabilityRepository extends ServiceEntityRepository
             ->setParameter('endDate', $endDate)
             ->orderBy('a.agent', 'ASC')
             ->addOrderBy('a.startDate', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->getQuery();
+            // ->getResult();
+
+        // $this->logger->info('API Debug', ['query !!' => $query->getSQL()]);
+
+        return $query->getResult();
     }
 } 
