@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Entity\Schedule;
 use App\Service\ScheduleGenerationService;
 use App\Service\ILPOptimizationService;
+use App\Service\AgentReassignmentService;
 use App\Repository\ScheduleRepository;
 use App\Repository\QueueTypeRepository;
 use App\Enum\ScheduleStatus;
@@ -26,6 +27,7 @@ class ScheduleController extends AbstractController
         private QueueTypeRepository $queueTypeRepository,
         private ScheduleGenerationService $scheduleGenerationService,
         private ILPOptimizationService $ilpOptimizationService,
+        private AgentReassignmentService $agentReassignmentService,
         private SerializerInterface $serializer,
         private ValidatorInterface $validator,
         private LoggerInterface $logger
@@ -125,6 +127,15 @@ class ScheduleController extends AbstractController
             ], 400);
         }
         
+        // Sprawdź typ optymalizacji (domyślnie 'ilp')
+        $optimizationType = $data['optimizationType'] ?? 'ilp';
+        if (!in_array($optimizationType, ['ilp', 'heuristic'])) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Nieprawidłowy typ optymalizacji. Dozwolone wartości: ilp, heuristic'
+            ], 400);
+        }
+        
         $queueType = $this->queueTypeRepository->find($data['queueTypeId']);
         if (!$queueType) {
             return $this->json([
@@ -165,12 +176,46 @@ class ScheduleController extends AbstractController
             $schedule->setWeekStartDate($weekStartDate);
             $schedule->setStatus(ScheduleStatus::DRAFT);
 
-
             $this->entityManager->persist($schedule);
             $this->entityManager->flush();
             
             // Wygeneruj przypisania w tej samej transakcji
             $generationResult = $this->scheduleGenerationService->generateSchedule($schedule->getId());
+            
+            // Wykonaj optymalizację na podstawie wybranego typu
+            $optimizationResult = null;
+            if ($optimizationType === 'ilp') {
+                // Usuń istniejące przypisania przed optymalizacją ILP
+                $qb = $this->entityManager->createQueryBuilder();
+                $qb->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
+                   ->where('ssa.schedule = :schedule')
+                   ->setParameter('schedule', $schedule);
+                $qb->getQuery()->execute();
+                
+                // Wykonaj optymalizację ILP
+                $optimizedAssignments = $this->ilpOptimizationService->optimizeScheduleILP($schedule);
+                
+                // Zapisz nowe przypisania
+                foreach ($optimizedAssignments as $assignment) {
+                    $this->entityManager->persist($assignment);
+                }
+                
+                // Oblicz metryki
+                $metrics = $this->ilpOptimizationService->calculateScheduleMetrics($schedule);
+                $validation = $this->ilpOptimizationService->validateScheduleConstraints($schedule);
+                
+                $optimizationResult = [
+                    'type' => 'ilp',
+                    'assignmentsCount' => count($optimizedAssignments),
+                    'totalHours' => $metrics['totalHours'],
+                    'metrics' => $metrics,
+                    'validation' => $validation
+                ];
+            } else {
+                // Wykonaj optymalizację heurystyczną
+                $optimizationResult = $this->scheduleGenerationService->optimizeSchedule($schedule->getId());
+                $optimizationResult['type'] = 'heuristic';
+            }
 
             // Zatwierdź transakcję
             $this->entityManager->commit();
@@ -178,14 +223,16 @@ class ScheduleController extends AbstractController
                                     
             return $this->json([
                 'success' => true,
-                'message' => 'Harmonogram został utworzony i wygenerowany pomyślnie',
+                'message' => 'Harmonogram został utworzony i zoptymalizowany pomyślnie',
                 'data' => [
                     'id' => $schedule->getId(),
                     'queueType' => $queueType->getName(),
                     'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
                     'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
                     'status' => $schedule->getStatus()->value,
-                    'generationResult' => $generationResult
+                    'optimizationType' => $optimizationType,
+                    'generationResult' => $generationResult,
+                    'optimizationResult' => $optimizationResult
                 ]
             ], 201);
             
@@ -392,5 +439,86 @@ class ScheduleController extends AbstractController
             'success' => true,
             'message' => 'Harmonogram został usunięty'
         ]);
+    }
+
+    #[Route('/{id}/reassignment-preview', name: 'reassignment_preview', methods: ['POST'])]
+    public function reassignmentPreview(int $id, Request $request): JsonResponse
+    {
+        $schedule = $this->scheduleRepository->find($id);
+        
+        if (!$schedule) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
+        }
+        
+        $data = json_decode($request->getContent(), true);
+        
+        if (!isset($data['agentId']) || !isset($data['newAvailability'])) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Brakuje wymaganych pól: agentId, newAvailability'
+            ], 400);
+        }
+        
+        try {
+            $preview = $this->agentReassignmentService->generateReassignmentPreview(
+                $schedule,
+                $data['agentId'],
+                $data['newAvailability']
+            );
+            
+            return $this->json([
+                'success' => true,
+                'data' => $preview
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Wystąpił błąd podczas generowania preview: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/{id}/reassign-agent', name: 'reassign_agent', methods: ['POST'])]
+    public function reassignAgent(int $id, Request $request): JsonResponse
+    {
+        $schedule = $this->scheduleRepository->find($id);
+        
+        if (!$schedule) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Harmonogram nie został znaleziony'
+            ], 404);
+        }
+        
+        $data = json_decode($request->getContent(), true);
+        
+        if (!isset($data['agentId']) || !isset($data['newAvailability'])) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Brakuje wymaganych pól: agentId, newAvailability'
+            ], 400);
+        }
+        
+        try {
+            $result = $this->agentReassignmentService->reassignAgent(
+                $schedule,
+                $data['agentId'],
+                $data['newAvailability']
+            );
+            
+            return $this->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Wystąpił błąd podczas reassignment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

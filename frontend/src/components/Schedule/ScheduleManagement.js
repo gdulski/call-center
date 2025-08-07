@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ScheduleList from './ScheduleList';
 import ScheduleGenerateForm from './ScheduleGenerateForm';
+import ScheduleEditForm from './ScheduleEditForm';
 import scheduleService from '../../services/scheduleService';
 import './Schedule.css';
 
@@ -9,6 +10,8 @@ const ScheduleManagement = () => {
   const [loading, setLoading] = useState(true);
   const [generateLoading, setGenerateLoading] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -36,10 +39,33 @@ const ScheduleManagement = () => {
 
   // Funkcja do obsługi edycji harmonogramu
   const handleEdit = (schedule) => {
-    // TODO: Implementacja edycji harmonogramu
-    console.log('Edycja harmonogramu:', schedule);
+    setSelectedSchedule(schedule);
+    setShowEditForm(true);
     setError('');
     setSuccess('');
+  };
+
+  // Funkcja do zamykania formularza edycji
+  const handleCloseEditForm = () => {
+    setShowEditForm(false);
+    setSelectedSchedule(null);
+    setError('');
+    setSuccess('');
+  };
+
+  // Funkcja do aktualizacji harmonogramu
+  const handleUpdateSchedule = async (updatedSchedule) => {
+    try {
+      // Tutaj można dodać logikę aktualizacji jeśli będzie potrzebna
+      setSuccess('Harmonogram został zaktualizowany pomyślnie.');
+      await loadSchedules();
+      handleCloseEditForm();
+      
+      // Usuń komunikat sukcesu po 5 sekundach
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err.message || 'Wystąpił błąd podczas aktualizacji harmonogramu');
+    }
   };
 
   // Funkcja do pokazania formularza generowania
@@ -66,10 +92,11 @@ const ScheduleManagement = () => {
           const newSchedule = await scheduleService.create({
             queueTypeId: formData.queueTypeId,
             weekStartDate: formData.weekStartDate,
-            status: 'draft'
+            optimizationType: formData.optimizationType
           });
           
-          setSuccess('Harmonogram został utworzony i wygenerowany pomyślnie.');
+          const optimizationTypeName = formData.optimizationType === 'ilp' ? 'ILP (Integer Linear Programming)' : 'Heurystyczna';
+          setSuccess(`Harmonogram został utworzony i zoptymalizowany pomyślnie używając algorytmu ${optimizationTypeName}.`);
           
           // Zamknij formularz i odśwież listę
           setShowGenerateForm(false);
@@ -90,7 +117,7 @@ const ScheduleManagement = () => {
       <div className="page-header">
         <h2>Zarządzanie harmonogramami</h2>
         <div className="header-actions">
-          {!showGenerateForm && (
+          {!showGenerateForm && !showEditForm && (
             <button 
               onClick={handleShowGenerateForm}
               className="btn btn-primary"
@@ -123,13 +150,25 @@ const ScheduleManagement = () => {
         </div>
       )}
 
-      <div className="list-section">
-        <ScheduleList
-          schedules={schedules}
-          onEdit={handleEdit}
-          isLoading={loading}
-        />
-      </div>
+      {showEditForm && selectedSchedule && (
+        <div className="form-section">
+          <ScheduleEditForm
+            schedule={selectedSchedule}
+            onClose={handleCloseEditForm}
+            onUpdate={handleUpdateSchedule}
+          />
+        </div>
+      )}
+
+      {!showGenerateForm && !showEditForm && (
+        <div className="list-section">
+          <ScheduleList
+            schedules={schedules}
+            onEdit={handleEdit}
+            isLoading={loading}
+          />
+        </div>
+      )}
     </div>
   );
 };

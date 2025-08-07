@@ -17,6 +17,7 @@ use App\Repository\AgentQueueTypeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Enum\ScheduleStatus;
 use Psr\Log\LoggerInterface;
+use App\Enum\UserRole;
 
 class ScheduleGenerationService
 {
@@ -134,7 +135,7 @@ class ScheduleGenerationService
            ->where('aqt.queueType = :queueTypeId')
            ->andWhere('u.role = :role')
            ->setParameter('queueTypeId', $queueTypeId)
-           ->setParameter('role', 'AGENT')
+           ->setParameter('role', UserRole::AGENT)
            ->orderBy('aqt.efficiencyScore', 'DESC');
 
         $results = $qb->getQuery()->getResult();

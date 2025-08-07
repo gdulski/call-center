@@ -47,6 +47,23 @@ class ScheduleService {
         return responseData.data || responseData;
     }
 
+    async getMetrics(id) {
+        const response = await fetch(`${API_BASE_URL}/api/schedules/${id}/metrics`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        return responseData.data || responseData;
+    }
+
     async create(scheduleData) {
         const response = await fetch(`${API_BASE_URL}/api/schedules`, {
             method: 'POST',
@@ -89,6 +106,48 @@ class ScheduleService {
             headers: {
                 'Content-Type': 'application/json',
             },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        return responseData.data || responseData;
+    }
+
+    async getReassignmentPreview(scheduleId, agentId, newAvailability) {
+        const response = await fetch(`${API_BASE_URL}/api/schedules/${scheduleId}/reassignment-preview`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agentId: agentId,
+                newAvailability: newAvailability
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        return responseData.data || responseData;
+    }
+
+    async reassignAgent(scheduleId, agentId, newAvailability) {
+        const response = await fetch(`${API_BASE_URL}/api/schedules/${scheduleId}/reassign-agent`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agentId: agentId,
+                newAvailability: newAvailability
+            }),
         });
 
         if (!response.ok) {

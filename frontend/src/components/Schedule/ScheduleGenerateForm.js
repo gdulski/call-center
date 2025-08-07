@@ -6,6 +6,7 @@ const ScheduleGenerateForm = ({ onSubmit, onCancel, isLoading = false }) => {
   const [selectedQueueTypeId, setSelectedQueueTypeId] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedWeek, setSelectedWeek] = useState('');
+  const [optimizationType, setOptimizationType] = useState('ilp'); // Domyślnie ILP
   const [errors, setErrors] = useState({});
   const [loadingQueueTypes, setLoadingQueueTypes] = useState(true);
 
@@ -59,6 +60,10 @@ const ScheduleGenerateForm = ({ onSubmit, onCancel, isLoading = false }) => {
       // Usunięto ograniczenie dla tygodni w przeszłości
     }
 
+    if (!optimizationType) {
+      newErrors.optimizationType = 'Wybierz typ optymalizacji';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -76,7 +81,8 @@ const ScheduleGenerateForm = ({ onSubmit, onCancel, isLoading = false }) => {
           String(weekStartDate.getDate()).padStart(2, '0');
       onSubmit({
         queueTypeId: parseInt(selectedQueueTypeId),
-        weekStartDate: formattedDate
+        weekStartDate: formattedDate,
+        optimizationType: optimizationType
       });
     }
   };
@@ -189,6 +195,41 @@ const ScheduleGenerateForm = ({ onSubmit, onCancel, isLoading = false }) => {
             </div>
           )}
           {errors.weekPeriod && <span className="error-message">{errors.weekPeriod}</span>}
+        </div>
+
+        <div className="form-group">
+          <label>Typ optymalizacji:</label>
+          <div className="radio-group">
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="optimizationType"
+                value="ilp"
+                checked={optimizationType === 'ilp'}
+                onChange={(e) => setOptimizationType(e.target.value)}
+                disabled={isLoading}
+              />
+              <span className="radio-label">
+                <strong>ILP (Integer Linear Programming)</strong>
+                <small>Zaawansowana optymalizacja matematyczna - lepsze wyniki, wolniejsza</small>
+              </span>
+            </label>
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="optimizationType"
+                value="heuristic"
+                checked={optimizationType === 'heuristic'}
+                onChange={(e) => setOptimizationType(e.target.value)}
+                disabled={isLoading}
+              />
+              <span className="radio-label">
+                <strong>Heurystyczna</strong>
+                <small>Szybka optymalizacja - podstawowe wyniki, szybsza</small>
+              </span>
+            </label>
+          </div>
+          {errors.optimizationType && <span className="error-message">{errors.optimizationType}</span>}
         </div>
 
         <div className="form-buttons">

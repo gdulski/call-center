@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\User;
+use App\Enum\UserRole;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -49,7 +50,7 @@ class UserRepository extends ServiceEntityRepository
             ->andWhere('aqt.queueType = :queueTypeId')
             ->andWhere('u.role = :role')
             ->setParameter('queueTypeId', $queueTypeId)
-            ->setParameter('role', 'agent')
+            ->setParameter('role', UserRole::AGENT)
             ->getQuery()
             ->getResult();
     }

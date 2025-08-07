@@ -99,4 +99,26 @@ class ScheduleShiftAssignmentRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getSingleScalarResult() > 0;
     }
+
+    /**
+     * Find conflicting assignments for a user in a specific time range
+     */
+    public function findConflictingAssignments(int $userId, \DateTimeInterface $startTime, \DateTimeInterface $endTime, Schedule $schedule): array
+    {
+        return $this->createQueryBuilder('sa')
+            ->andWhere('sa.user = :userId')
+            ->andWhere('sa.schedule = :schedule')
+            ->andWhere('(
+                (sa.startTime <= :startTime AND sa.endTime > :startTime) OR
+                (sa.startTime < :endTime AND sa.endTime >= :endTime) OR
+                (sa.startTime >= :startTime AND sa.endTime <= :endTime)
+            )')
+            ->setParameter('userId', $userId)
+            ->setParameter('schedule', $schedule)
+            ->setParameter('startTime', $startTime)
+            ->setParameter('endTime', $endTime)
+            ->orderBy('sa.startTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

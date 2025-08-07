@@ -9,6 +9,7 @@ use App\Entity\CallQueueVolumePrediction;
 use App\Entity\AgentQueueType;
 use App\Repository\CallQueueVolumePredictionRepository;
 use App\Repository\AgentQueueTypeRepository;
+use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -36,6 +37,13 @@ class ILPOptimizationService
         );
 
         $availableAgents = $this->getAvailableAgentsWithEfficiency($schedule->getQueueType()->getId());
+        
+        // Sprawdź czy są dostępni agenci
+        if (empty($availableAgents)) {
+            throw new \RuntimeException(
+                'Brak dostępnych agentów dla typu kolejki: ' . $schedule->getQueueType()->getName()
+            );
+        }
         
         // Przygotuj dane dla algorytmu ILP
         $ilpData = $this->prepareILPData($schedule, $predictions, $availableAgents);
@@ -92,6 +100,20 @@ class ILPOptimizationService
         $efficiency = $ilpData['efficiency'];
         $schedule = $ilpData['schedule'];
         
+        // Sprawdź czy są dostępni agenci
+        if (empty($agents)) {
+            return $assignments; // Brak agentów - zwróć pustą listę
+        }
+        
+        // Sprawdź czy efektywność nie jest zerowa
+        $totalEfficiency = array_sum($efficiency);
+        if ($totalEfficiency <= 0) {
+            // Jeśli efektywność jest zerowa, użyj domyślnej wartości
+            $avgEfficiency = 1.0; // Domyślna efektywność
+        } else {
+            $avgEfficiency = $totalEfficiency / count($agents);
+        }
+        
         // Sortuj agentów według efektywności (malejąco)
         usort($agents, function($a, $b) use ($efficiency) {
             return $efficiency[$b] <=> $efficiency[$a];
@@ -107,9 +129,13 @@ class ILPOptimizationService
             }
             
             // Oblicz wymagane godziny pracy
-            $totalEfficiency = array_sum($efficiency);
-            $avgEfficiency = $totalEfficiency / count($agents);
             $callsPerHourPerAgent = 10 * $avgEfficiency; // 10 połączeń na godzinę jako baseline
+            
+            // Sprawdź czy nie dzielimy przez zero
+            if ($callsPerHourPerAgent <= 0) {
+                $callsPerHourPerAgent = 1; // Domyślna wartość
+            }
+            
             $requiredHours = $requiredCalls / $callsPerHourPerAgent;
             
             // Przydziel agentów używając algorytmu zachłannego z priorytetem efektywności
@@ -160,7 +186,7 @@ class ILPOptimizationService
            ->where('aqt.queueType = :queueTypeId')
            ->andWhere('u.role = :role')
            ->setParameter('queueTypeId', $queueTypeId)
-           ->setParameter('role', 'AGENT')
+           ->setParameter('role', UserRole::AGENT)
            ->orderBy('aqt.efficiencyScore', 'DESC');
 
         $results = $qb->getQuery()->getResult();
@@ -171,6 +197,23 @@ class ILPOptimizationService
                 'user' => $result[0],
                 'efficiencyScore' => $result['efficiencyScore']
             ];
+        }
+        
+        // Dodaj logowanie dla diagnostyki
+        if (empty($agents)) {
+            // Sprawdź czy w ogóle są agenci w systemie
+            $allAgents = $this->entityManager->getRepository(User::class)->findBy(['role' => UserRole::AGENT]);
+            $totalAgents = count($allAgents);
+            
+            // Sprawdź czy są przypisania do typów kolejek
+            $allAssignments = $this->entityManager->getRepository(AgentQueueType::class)->findAll();
+            $totalAssignments = count($allAssignments);
+            
+            throw new \RuntimeException(
+                "Brak agentów dla typu kolejki ID: $queueTypeId. " .
+                "Łącznie agentów w systemie: $totalAgents, " .
+                "Łącznie przypisań do typów kolejek: $totalAssignments"
+            );
         }
         
         return $agents;
