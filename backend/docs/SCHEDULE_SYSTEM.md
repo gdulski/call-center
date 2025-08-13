@@ -10,8 +10,10 @@ System harmonogramu call center to zaawansowane rozwiązanie do automatycznego g
 
 1. **ScheduleGenerationService** - Główny serwis do generowania harmonogramów
 2. **ILPOptimizationService** - Serwis do zaawansowanej optymalizacji ILP
-3. **ScheduleController** - Kontroler API do zarządzania harmonogramami
-4. **Encje danych** - Model danych dla harmonogramów, agentów, kolejek
+3. **AgentReassignmentService** - Serwis do dynamicznego reassignment agentów
+4. **ScheduleController** - Kontroler API do zarządzania harmonogramami
+5. **AgentAvailabilityController** - Kontroler API do zarządzania dostępnością
+6. **Encje danych** - Model danych dla harmonogramów, agentów, kolejek
 
 ### Struktura danych:
 
@@ -19,11 +21,13 @@ System harmonogramu call center to zaawansowane rozwiązanie do automatycznego g
 Schedule
 ├── QueueType (typ kolejki)
 ├── WeekStartDate (początek tygodnia)
+├── WeekIdentifier (identyfikator tygodnia, np. "2024-W01")
 ├── Status (draft/generated/published/finalized)
 └── ScheduleShiftAssignment[]
     ├── User (agent)
     ├── StartTime
-    └── EndTime
+    ├── EndTime
+    └── DurationInHours
 
 CallQueueVolumePrediction
 ├── QueueType
@@ -39,6 +43,15 @@ AgentAvailability
 ├── Agent
 ├── StartDate
 └── EndDate
+
+User (Agent)
+├── Name
+├── Role (enum UserRole)
+└── AgentQueueType[] (umiejętności)
+
+QueueType
+├── Name
+└── Description
 ```
 
 ## Algorytm generowania harmonogramu
@@ -207,6 +220,209 @@ private function solveILP(array $ilpData): array
     }
     
     return $assignments;
+}
+```
+
+## System Reassignment Agentów
+
+### 1. Przegląd funkcjonalności
+
+System reassignment umożliwia dynamiczną zmianę dostępności agentów w już wygenerowanych harmonogramach:
+
+- **Preview reassignment** - Podgląd zmian bez zapisywania
+- **Automatyczne znajdowanie zastępców** - Algorytm wyszukiwania najlepszych zastępców
+- **Walidacja konfliktów** - Sprawdzanie nakładających się przypisań
+- **Logowanie zmian** - Śledzenie wszystkich modyfikacji
+
+### 2. Algorytm reassignment
+
+```php
+public function reassignAgent(Schedule $schedule, int $agentId, array $newAvailability): array
+{
+    // 1. Znajdź wszystkie przypisania danego agenta
+    $agentAssignments = $this->findAgentAssignments($schedule, $agentId);
+    
+    // 2. Sprawdź konflikty z nową dostępnością
+    $conflictingAssignments = $this->findConflicts($agentAssignments, $newAvailability);
+    
+    $changes = [];
+    $unresolvedConflicts = [];
+    
+    // 3. Dla każdego konfliktu znajdź zastępcę
+    foreach ($conflictingAssignments as $assignment) {
+        $replacementAgent = $this->findReplacementAgent($assignment, $agentId, $schedule);
+        
+        if ($replacementAgent) {
+            $oldAgent = $assignment->getUser();
+            $this->reassignAssignment($assignment, $replacementAgent);
+            
+            $changes[] = [
+                'assignmentId' => $assignment->getId(),
+                'oldAgent' => [
+                    'id' => $oldAgent->getId(),
+                    'name' => $oldAgent->getName()
+                ],
+                'newAgent' => [
+                    'id' => $replacementAgent->getId(),
+                    'name' => $replacementAgent->getName()
+                ],
+                'date' => $assignment->getStartTime()->format('Y-m-d'),
+                'time' => $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
+                'duration' => $assignment->getDurationInHours()
+            ];
+        } else {
+            $unresolvedConflicts[] = [
+                'assignmentId' => $assignment->getId(),
+                'date' => $assignment->getStartTime()->format('Y-m-d'),
+                'time' => $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
+                'reason' => 'Brak dostępnego zastępcy z odpowiednimi umiejętnościami'
+            ];
+        }
+    }
+    
+    return [
+        'success' => true,
+        'changes' => $changes,
+        'unresolvedConflicts' => $unresolvedConflicts,
+        'message' => sprintf(
+            'Pomyślnie zastąpiono %d przypisań. %d konfliktów nierozwiązanych.',
+            count($changes),
+            count($unresolvedConflicts)
+        )
+    ];
+}
+```
+
+### 3. Znajdowanie zastępców
+
+```php
+private function findReplacementAgent(ScheduleShiftAssignment $assignment, int $excludedAgentId, Schedule $schedule): ?User
+{
+    $startTime = $assignment->getStartTime();
+    $endTime = $assignment->getEndTime();
+    $queueType = $schedule->getQueueType();
+    
+    // Znajdź agentów z odpowiednimi umiejętnościami
+    $qualifiedAgents = $this->agentQueueTypeRepository->findBy(['queueType' => $queueType]);
+    $qualifiedAgentIds = array_map(fn($aqt) => $aqt->getUser()->getId(), $qualifiedAgents);
+    
+    // Wyklucz obecnego agenta
+    $qualifiedAgentIds = array_filter($qualifiedAgentIds, fn($id) => $id !== $excludedAgentId);
+    
+    // Sprawdź dostępność w danym czasie
+    $availableAgents = $this->findAvailableAgentsInTimeRange(
+        $qualifiedAgentIds, $startTime, $endTime, $schedule
+    );
+    
+    if (empty($availableAgents)) {
+        return null;
+    }
+    
+    // Wybierz najlepszego agenta na podstawie efektywności
+    usort($availableAgents, function($a, $b) use ($queueType) {
+        $efficiencyA = $this->getAgentEfficiencyScore($a, $queueType);
+        $efficiencyB = $this->getAgentEfficiencyScore($b, $queueType);
+        return $efficiencyB <=> $efficiencyA;
+    });
+    
+    return $availableAgents[0];
+}
+```
+
+### 4. Preview reassignment
+
+```php
+public function generateReassignmentPreview(Schedule $schedule, int $agentId, array $newAvailability): array
+{
+    // Znajdź konfliktujące przypisania
+    $agentAssignments = $this->findAgentAssignments($schedule, $agentId);
+    $conflictingAssignments = $this->findConflicts($agentAssignments, $newAvailability);
+    
+    $potentialReplacements = [];
+    $estimatedImpact = [
+        'assignmentsToChange' => count($conflictingAssignments),
+        'totalHoursAffected' => 0
+    ];
+    
+    // Dla każdego konfliktu znajdź potencjalnych zastępców
+    foreach ($conflictingAssignments as $assignment) {
+        $replacementAgent = $this->findReplacementAgent($assignment, $agentId, $schedule);
+        
+        if ($replacementAgent) {
+            $potentialReplacements[] = [
+                'agentId' => $replacementAgent->getId(),
+                'agentName' => $replacementAgent->getName(),
+                'efficiencyScore' => $this->getAgentEfficiencyScore($replacementAgent, $schedule->getQueueType()),
+                'availability' => $assignment->getStartTime()->format('Y-m-d H:i') . '-' . $assignment->getEndTime()->format('H:i')
+            ];
+        }
+        
+        $estimatedImpact['totalHoursAffected'] += $assignment->getDurationInHours();
+    }
+    
+    return [
+        'conflictingAssignments' => array_map(fn($assignment) => [
+            'assignmentId' => $assignment->getId(),
+            'date' => $assignment->getStartTime()->format('Y-m-d'),
+            'time' => $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
+            'duration' => $assignment->getDurationInHours()
+        ], $conflictingAssignments),
+        'potentialReplacements' => $potentialReplacements,
+        'estimatedImpact' => $estimatedImpact
+    ];
+}
+```
+
+## Zarządzanie dostępnością agentów
+
+### 1. Model danych
+
+```php
+class AgentAvailability
+{
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
+    private ?int $id = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private User $agent;
+
+    #[ORM\Column(type: 'datetime')]
+    private \DateTimeInterface $startDate;
+
+    #[ORM\Column(type: 'datetime')]
+    private \DateTimeInterface $endDate;
+}
+```
+
+### 2. Walidacja nakładających się okresów
+
+```php
+// Check for overlapping availability periods
+$overlapping = $this->availabilityRepository->createQueryBuilder('a')
+    ->where('a.agent = :agent')
+    ->andWhere('(a.startDate <= :endDate AND a.endDate >= :startDate)')
+    ->setParameter('agent', $agent)
+    ->setParameter('startDate', $startDate)
+    ->setParameter('endDate', $endDate)
+    ->getQuery()
+    ->getResult();
+
+if (!empty($overlapping)) {
+    return $this->json(['error' => 'Availability period overlaps with existing period'], Response::HTTP_CONFLICT);
+}
+```
+
+### 3. Zaokrąglanie do pełnych godzin
+
+```php
+private function roundToFullHour(\DateTimeInterface $dateTime): \DateTime
+{
+    $rounded = clone $dateTime;
+    $rounded->setTime($rounded->format('H'), 0, 0);
+    return $rounded;
 }
 ```
 
@@ -480,6 +696,22 @@ class ScheduleGenerationServiceTest extends TestCase
             $optimizedMetrics['totalHours']
         );
     }
+    
+    public function testAgentReassignment()
+    {
+        // Test reassignment agenta
+        $schedule = $this->createMockSchedule();
+        $agentId = 5;
+        $newAvailability = [
+            ['startDate' => '2024-01-01', 'endDate' => '2024-01-03']
+        ];
+        
+        $result = $this->agentReassignmentService->reassignAgent($schedule, $agentId, $newAvailability);
+        
+        $this->assertTrue($result['success']);
+        $this->assertArrayHasKey('changes', $result);
+        $this->assertArrayHasKey('unresolvedConflicts', $result);
+    }
 }
 ```
 
@@ -535,6 +767,22 @@ public function generateSchedule(int $scheduleId): array
         throw $e;
     }
 }
+
+public function reassignAgent(Schedule $schedule, int $agentId, array $newAvailability): array
+{
+    $this->logger->info('Rozpoczęcie reassignment agenta', [
+        'scheduleId' => $schedule->getId(),
+        'agentId' => $agentId,
+        'newAvailability' => $newAvailability
+    ]);
+    
+    // ... implementacja
+    
+    $this->logger->info('Zakończenie reassignment agenta', [
+        'changesCount' => count($changes),
+        'unresolvedCount' => count($unresolvedConflicts)
+    ]);
+}
 ```
 
 ### 2. Metryki wydajności
@@ -546,7 +794,9 @@ public function getPerformanceMetrics(): array
         'averageGenerationTime' => $this->calculateAverageGenerationTime(),
         'optimizationSuccessRate' => $this->calculateOptimizationSuccessRate(),
         'coverageImprovement' => $this->calculateCoverageImprovement(),
-        'constraintViolations' => $this->getConstraintViolationsCount()
+        'constraintViolations' => $this->getConstraintViolationsCount(),
+        'reassignmentSuccessRate' => $this->calculateReassignmentSuccessRate(),
+        'averageReassignmentTime' => $this->calculateAverageReassignmentTime()
     ];
 }
 ```
@@ -558,8 +808,10 @@ System harmonogramu call center zapewnia:
 1. **Automatyczne generowanie** harmonogramów na podstawie predykcji
 2. **Optymalizację ILP** dla najlepszego wykorzystania zasobów
 3. **Heurystyki** dla szybkiego przydziału agentów
-4. **Walidację** ograniczeń i metryki jakości
-5. **API REST** do łatwej integracji
-6. **Rozszerzalność** dla przyszłych ulepszeń
+4. **Dynamiczny reassignment** agentów z automatycznym znajdowaniem zastępców
+5. **Zarządzanie dostępnością** agentów z walidacją konfliktów
+6. **Walidację** ograniczeń i metryki jakości
+7. **API REST** do łatwej integracji
+8. **Rozszerzalność** dla przyszłych ulepszeń
 
 System jest gotowy do wdrożenia w środowisku produkcyjnym i może być dalej rozwijany w zależności od specyficznych wymagań call center. 

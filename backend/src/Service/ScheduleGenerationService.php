@@ -61,11 +61,11 @@ class ScheduleGenerationService
         // Pobierz dostępnych agentów dla danego typu kolejki z ich efektywnością
         $availableAgents = $this->getAvailableAgentsWithEfficiency($queueType->getId());
 
-        $this->logger->info('API Debug', [
-            array_map(fn($agent) => $agent['user']->getId(), $availableAgents),
-            $weekStartDate,
-            $weekEndDate
-        ]);
+        // $this->logger->info('API Debug', [
+        //     array_map(fn($agent) => $agent['user']->getId(), $availableAgents),
+        //     $weekStartDate,
+        //     $weekEndDate
+        // ]);
 
         // Pobierz dostępności agentów w danym tygodniu
         $agentAvailabilities = $this->availabilityRepository->findByAgentsAndDateRange(
@@ -80,8 +80,8 @@ class ScheduleGenerationService
         // Grupuj dostępności według godzin
         $hourlyAvailabilities = $this->groupAvailabilitiesByHour($agentAvailabilities);
 
-        $this->logger->info('API Debug', ['hourlyAvailabilities' => $hourlyAvailabilities]);
-        $this->logger->info('API Debug', ['hourlyPredictions' => $hourlyPredictions]);
+        // $this->logger->info('API Debug', ['hourlyAvailabilities' => $hourlyAvailabilities]);
+        // $this->logger->info('API Debug', ['hourlyPredictions' => $hourlyPredictions]);
 
         // Generuj harmonogram używając heurystyk (podstawowe generowanie)
         $assignments = $this->generateOptimalAssignments(
@@ -182,10 +182,19 @@ class ScheduleGenerationService
                 if (!isset($grouped[$hourKey])) {
                     $grouped[$hourKey] = [];
                 }
-                $grouped[$hourKey][] = $agentId;
+                
+                // Dodaj agenta tylko jeśli nie jest już na liście
+                if (!in_array($agentId, $grouped[$hourKey])) {
+                    $grouped[$hourKey][] = $agentId;
+                }
+                
                 $current->modify('+1 hour');
             }
         }
+        
+        // Sortuj klucze chronologicznie
+        ksort($grouped);
+        
         return $grouped;
     }
 
@@ -205,32 +214,56 @@ class ScheduleGenerationService
             return $b['efficiencyScore'] <=> $a['efficiencyScore'];
         });
 
-        // Dla każdej godziny z predykcją
+        // Grupuj predykcje według dni zamiast godzin dla lepszego planowania
+        $dailyPredictions = [];
         foreach ($hourlyPredictions as $hourKey => $expectedCalls) {
             $hourDateTime = \DateTime::createFromFormat('Y-m-d H:i', $hourKey);
-            $availableAgentIds = $hourlyAvailabilities[$hourKey] ?? [];
+            $dayKey = $hourDateTime->format('Y-m-d');
             
-            if (empty($availableAgentIds)) {
-                continue; // Brak dostępnych agentów w tej godzinie
+            if (!isset($dailyPredictions[$dayKey])) {
+                $dailyPredictions[$dayKey] = 0;
+            }
+            $dailyPredictions[$dayKey] += $expectedCalls;
+        }
+
+        // Dla każdego dnia
+        foreach ($dailyPredictions as $dayKey => $totalDailyCalls) {
+            if ($totalDailyCalls <= 0) {
+                continue;
             }
 
-            // Filtruj dostępnych agentów dla tej godziny
-            $hourlyAvailableAgents = array_filter($availableAgents, function($agent) use ($availableAgentIds) {
-                return in_array($agent['user']->getId(), $availableAgentIds);
-            });
+            // Znajdź dostępnych agentów dla tego dnia
+            $dayAvailableAgents = [];
+            foreach ($availableAgents as $agentData) {
+                $agentId = $agentData['user']->getId();
+                
+                // Sprawdź dostępność agenta w tym dniu
+                $dayAvailability = $this->getAgentDayAvailability($agentId, $dayKey, $hourlyAvailabilities);
+                if ($dayAvailability > 0) {
+                    $dayAvailableAgents[] = [
+                        'user' => $agentData['user'],
+                        'efficiencyScore' => $agentData['efficiencyScore'],
+                        'availability' => $dayAvailability
+                    ];
+                }
+            }
 
-            // Oblicz wymagane godziny pracy na podstawie predykcji
-            $requiredHours = $this->calculateRequiredHours($expectedCalls, $hourlyAvailableAgents);
+            if (empty($dayAvailableAgents)) {
+                continue; // Brak dostępnych agentów w tym dniu
+            }
+
+            // Oblicz wymagane godziny pracy na dzień
+            $requiredHours = $this->calculateRequiredHours($totalDailyCalls, $dayAvailableAgents);
             
-            // Przydziel agentów używając heurystyk
-            $hourAssignments = $this->assignAgentsToHour(
+            // Przydziel agentów na cały dzień
+            $dayAssignments = $this->assignAgentsToDay(
                 $schedule,
-                $hourDateTime,
-                $hourlyAvailableAgents,
+                $dayKey,
+                $dayAvailableAgents,
                 $requiredHours
             );
             
-            $assignments = array_merge($assignments, $hourAssignments);
+            $assignments = array_merge($assignments, $dayAssignments);
         }
 
         return $assignments;
@@ -256,7 +289,15 @@ class ScheduleGenerationService
             return 0;
         }
 
-        return $expectedCalls / $callsPerHourPerAgent;
+        // Oblicz minimalne wymagane godziny
+        $minRequiredHours = $expectedCalls / $callsPerHourPerAgent;
+        
+        // Zapewnij minimalny czas pracy - przynajmniej 4 godziny dla lepszego wykorzystania agentów
+        $minShiftHours = 4.0;
+        
+        // Jeśli wymagane godziny są mniejsze niż minimalna zmiana, użyj minimalnej zmiany
+        // To zapewni lepsze wykorzystanie dostępności agentów
+        return max($minRequiredHours, $minShiftHours);
     }
 
     /**
@@ -271,8 +312,14 @@ class ScheduleGenerationService
         $assignments = [];
         $remainingHours = $requiredHours;
         
-        // Maksymalna liczba godzin na agenta w jednej godzinie (zazwyczaj 1)
-        $maxHoursPerAgent = 1.0;
+        // Zwiększamy maksymalną liczbę godzin na agenta - pozwalamy na dłuższe zmiany
+        $maxHoursPerAgent = 8.0; // Pełna zmiana - 8 godzin
+        $minHoursPerAgent = 4.0; // Minimalna zmiana - 4 godziny
+        
+        // Sortuj agentów według efektywności (najlepsi pierwsi)
+        usort($availableAgents, function($a, $b) {
+            return $b['efficiencyScore'] <=> $a['efficiencyScore'];
+        });
         
         foreach ($availableAgents as $agentData) {
             if ($remainingHours <= 0) {
@@ -283,7 +330,18 @@ class ScheduleGenerationService
             $efficiency = $agentData['efficiencyScore'];
             
             // Oblicz godziny do przydzielenia dla tego agenta
+            // Daj agentowi więcej godzin jeśli to możliwe, ale nie mniej niż minimum
             $hoursToAssign = min($maxHoursPerAgent, $remainingHours);
+            
+            // Jeśli zostało mniej niż minimum, ale więcej niż 0, daj minimum
+            if ($hoursToAssign < $minHoursPerAgent && $remainingHours >= $minHoursPerAgent) {
+                $hoursToAssign = $minHoursPerAgent;
+            }
+            
+            // Jeśli zostało mniej niż minimum i to ostatni agent, daj wszystko co zostało
+            if ($hoursToAssign < $minHoursPerAgent && $remainingHours < $minHoursPerAgent) {
+                $hoursToAssign = $remainingHours;
+            }
             
             // Utwórz przypisanie
             $assignment = new ScheduleShiftAssignment();
@@ -297,6 +355,135 @@ class ScheduleGenerationService
             
             $assignments[] = $assignment;
             $remainingHours -= $hoursToAssign;
+        }
+        
+        return $assignments;
+    }
+
+    /**
+     * Sprawdza dostępność agenta w konkretnym dniu
+     */
+    private function getAgentDayAvailability(int $agentId, string $dayKey, array $hourlyAvailabilities): float
+    {
+        $totalHours = 0;
+        
+        // Sprawdź dostępność dla każdej godziny w dniu (od 8:00 do 18:00 - standardowe godziny pracy)
+        for ($hour = 8; $hour <= 18; $hour++) {
+            $hourKey = $dayKey . ' ' . str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00';
+            
+            if (isset($hourlyAvailabilities[$hourKey]) && in_array($agentId, $hourlyAvailabilities[$hourKey])) {
+                $totalHours += 1.0; // Agent dostępny przez całą godzinę
+            }
+        }
+        
+        // Jeśli nie ma dostępności w hourlyAvailabilities, spróbuj pobrać z bazy danych
+        if ($totalHours == 0) {
+            $totalHours = $this->getAgentAvailabilityFromDatabase($agentId, $dayKey);
+        }
+        
+        return $totalHours;
+    }
+    
+    /**
+     * Pobiera dostępność agenta z bazy danych dla konkretnego dnia
+     */
+    private function getAgentAvailabilityFromDatabase(int $agentId, string $dayKey): float
+    {
+        $startDate = new \DateTime($dayKey . ' 00:00:00');
+        $endDate = new \DateTime($dayKey . ' 23:59:59');
+        
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('aa.startDate, aa.endDate')
+           ->from('App\Entity\AgentAvailability', 'aa')
+           ->where('aa.agent = :agentId')
+           ->andWhere('aa.startDate <= :endDate')
+           ->andWhere('aa.endDate >= :startDate')
+           ->setParameter('agentId', $agentId)
+           ->setParameter('startDate', $startDate)
+           ->setParameter('endDate', $endDate);
+        
+        $results = $qb->getQuery()->getResult();
+        
+        $totalHours = 0.0;
+        foreach ($results as $result) {
+            $start = $result['startDate'];
+            $end = $result['endDate'];
+            
+            // Oblicz przecięcie z dniem
+            $dayStart = max($start, $startDate);
+            $dayEnd = min($end, $endDate);
+            
+            if ($dayStart < $dayEnd) {
+                // Oblicz różnicę w godzinach
+                $diff = $dayEnd->diff($dayStart);
+                $hours = $diff->h + ($diff->i / 60.0) + ($diff->s / 3600.0);
+                $totalHours += $hours;
+            }
+        }
+        
+        return $totalHours;
+    }
+
+    /**
+     * Przydziela agentów do konkretnego dnia
+     */
+    private function assignAgentsToDay(
+        Schedule $schedule,
+        string $dayKey,
+        array $availableAgents,
+        float $requiredHours
+    ): array {
+        $assignments = [];
+        $remainingHours = $requiredHours;
+        
+        // Sortuj agentów według efektywności (najlepsi pierwsi)
+        usort($availableAgents, function($a, $b) {
+            return $b['efficiencyScore'] <=> $a['efficiencyScore'];
+        });
+        
+        foreach ($availableAgents as $agentData) {
+            if ($remainingHours <= 0) {
+                break;
+            }
+            
+            $agent = $agentData['user'];
+            $efficiency = $agentData['efficiencyScore'];
+            $availability = $agentData['availability']; // Dostępność dla całego dnia
+            
+            // Oblicz godziny do przydzielenia dla tego agenta
+            // Daj agentowi więcej godzin jeśli to możliwe, ale nie mniej niż minimum
+            $hoursToAssign = min($availability, $remainingHours);
+            
+            // Jeśli zostało mniej niż minimum, ale więcej niż 0, daj minimum
+            if ($hoursToAssign < 4.0 && $remainingHours >= 4.0) { // Użyj minimalnej zmiany
+                $hoursToAssign = 4.0;
+            }
+            
+            // Jeśli zostało mniej niż minimum i to ostatni agent, daj wszystko co zostało
+            if ($hoursToAssign < 4.0 && $remainingHours < 4.0) {
+                $hoursToAssign = $remainingHours;
+            }
+            
+            // Utwórz przypisanie
+            $assignment = new ScheduleShiftAssignment();
+            $assignment->setSchedule($schedule);
+            $assignment->setUser($agent);
+            
+            // Ustaw początek na 9:00 danego dnia (standardowa godzina rozpoczęcia pracy)
+            $startTime = new \DateTime($dayKey . ' 09:00:00');
+            $assignment->setStartTime($startTime);
+            
+            $endTime = clone $startTime;
+            $endTime->modify('+' . round($hoursToAssign * 60) . ' minutes');
+            $assignment->setEndTime($endTime);
+            
+            $assignments[] = $assignment;
+            $remainingHours -= $hoursToAssign;
+            
+            // Jeśli pokryliśmy zapotrzebowanie, zakończ
+            if ($remainingHours <= 0) {
+                break;
+            }
         }
         
         return $assignments;

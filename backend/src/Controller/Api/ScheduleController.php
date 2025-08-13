@@ -185,20 +185,27 @@ class ScheduleController extends AbstractController
             // Wykonaj optymalizację na podstawie wybranego typu
             $optimizationResult = null;
             if ($optimizationType === 'ilp') {
-                // Usuń istniejące przypisania przed optymalizacją ILP
-                $qb = $this->entityManager->createQueryBuilder();
-                $qb->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
-                   ->where('ssa.schedule = :schedule')
-                   ->setParameter('schedule', $schedule);
-                $qb->getQuery()->execute();
-                
                 // Wykonaj optymalizację ILP
                 $optimizedAssignments = $this->ilpOptimizationService->optimizeScheduleILP($schedule);
+
+                // $this->logger->info('API Debug', ['optimizedAssignments' => $optimizedAssignments]);
+
+
+                if (count($optimizedAssignments)) {
+                    // Usuń istniejące przypisania przed optymalizacją ILP
+                    $qb = $this->entityManager->createQueryBuilder();
+                    $qb->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
+                    ->where('ssa.schedule = :schedule')
+                    ->setParameter('schedule', $schedule);
+                    $qb->getQuery()->execute();  
+                }
                 
                 // Zapisz nowe przypisania
                 foreach ($optimizedAssignments as $assignment) {
                     $this->entityManager->persist($assignment);
                 }
+                $this->entityManager->flush();
+
                 
                 // Oblicz metryki
                 $metrics = $this->ilpOptimizationService->calculateScheduleMetrics($schedule);
@@ -240,7 +247,8 @@ class ScheduleController extends AbstractController
             
             // Wycofaj transakcję w przypadku błędu
             $this->entityManager->rollback();
-            
+            $this->logger->error('API Debug', ['error' => $e->getTraceAsString()]);
+
             return $this->json([
                 'success' => false,
                 'message' => 'Wystąpił błąd podczas tworzenia harmonogramu: ' . $e->getMessage()

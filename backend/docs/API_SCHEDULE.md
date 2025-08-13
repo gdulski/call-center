@@ -19,9 +19,13 @@ Zwraca listę wszystkich harmonogramów.
   "data": [
     {
       "id": 1,
-      "queueType": "Sprzedaż",
+      "queueType": {
+        "id": 1,
+        "name": "Sprzedaż"
+      },
       "weekStartDate": "2024-01-01",
       "weekEndDate": "2024-01-07",
+      "weekIdentifier": "2024-W01",
       "status": "generated",
       "totalAssignedHours": 168.5,
       "assignmentsCount": 45
@@ -239,6 +243,193 @@ Usuwa harmonogram i wszystkie jego przypisania.
 }
 ```
 
+### 10. Preview reassignment agenta
+
+**POST** `/api/schedules/{id}/reassignment-preview`
+
+Generuje podgląd zmian przy reassignment agenta bez zapisywania.
+
+**Request Body:**
+```json
+{
+  "agentId": 5,
+  "newAvailability": [
+    {
+      "startDate": "2024-01-01",
+      "endDate": "2024-01-03"
+    }
+  ]
+}
+```
+
+**Odpowiedź:**
+```json
+{
+  "success": true,
+  "data": {
+    "conflictingAssignments": [
+      {
+        "assignmentId": 15,
+        "date": "2024-01-02",
+        "time": "09:00-17:00",
+        "duration": 8.0
+      }
+    ],
+    "potentialReplacements": [
+      {
+        "agentId": 8,
+        "agentName": "Anna Nowak",
+        "efficiencyScore": 0.85,
+        "availability": "2024-01-02 09:00-17:00"
+      }
+    ],
+    "estimatedImpact": {
+      "assignmentsToChange": 3,
+      "totalHoursAffected": 24.0
+    }
+  }
+}
+```
+
+### 11. Reassignment agenta
+
+**POST** `/api/schedules/{id}/reassign-agent`
+
+Przeprowadza reassignment agenta w harmonogramie.
+
+**Request Body:**
+```json
+{
+  "agentId": 5,
+  "newAvailability": [
+    {
+      "startDate": "2024-01-01",
+      "endDate": "2024-01-03"
+    }
+  ]
+}
+```
+
+**Odpowiedź:**
+```json
+{
+  "success": true,
+  "message": "Pomyślnie zastąpiono 3 przypisań. 0 konfliktów nierozwiązanych.",
+  "data": {
+    "changes": [
+      {
+        "assignmentId": 15,
+        "oldAgent": {
+          "id": 5,
+          "name": "Jan Kowalski"
+        },
+        "newAgent": {
+          "id": 8,
+          "name": "Anna Nowak"
+        },
+        "date": "2024-01-02",
+        "time": "09:00-17:00",
+        "duration": 8.0
+      }
+    ],
+    "unresolvedConflicts": []
+  }
+}
+```
+
+## Zarządzanie dostępnością agentów
+
+### 1. Lista dostępności
+
+**GET** `/api/availability`
+
+Zwraca listę wszystkich dostępności agentów.
+
+**Query Parameters:**
+- `agentId` (opcjonalny) - ID konkretnego agenta
+
+**Odpowiedź:**
+```json
+[
+  {
+    "id": 1,
+    "agent": {
+      "id": 5,
+      "name": "Jan Kowalski"
+    },
+    "startDate": "2024-01-01T09:00:00+00:00",
+    "endDate": "2024-01-01T17:00:00+00:00"
+  }
+]
+```
+
+### 2. Utworzenie dostępności
+
+**POST** `/api/availability`
+
+Tworzy nową dostępność dla agenta.
+
+**Request Body:**
+```json
+{
+  "agentId": 5,
+  "startDate": "2024-01-01T09:00:00Z",
+  "endDate": "2024-01-01T17:00:00Z"
+}
+```
+
+**Odpowiedź:**
+```json
+{
+  "id": 1,
+  "agent": {
+    "id": 5,
+    "name": "Jan Kowalski"
+  },
+  "startDate": "2024-01-01T09:00:00+00:00",
+  "endDate": "2024-01-01T17:00:00+00:00"
+}
+```
+
+### 3. Szczegóły dostępności
+
+**GET** `/api/availability/{id}`
+
+Zwraca szczegóły konkretnej dostępności.
+
+**Odpowiedź:**
+```json
+{
+  "id": 1,
+  "agent": {
+    "id": 5,
+    "name": "Jan Kowalski"
+  },
+  "startDate": "2024-01-01T09:00:00+00:00",
+  "endDate": "2024-01-01T17:00:00+00:00"
+}
+```
+
+### 4. Aktualizacja dostępności
+
+**PUT** `/api/availability/{id}`
+
+Aktualizuje istniejącą dostępność.
+
+**Request Body:**
+```json
+{
+  "startDate": "2024-01-01T10:00:00Z",
+  "endDate": "2024-01-01T18:00:00Z"
+}
+```
+
+### 5. Usunięcie dostępności
+
+**DELETE** `/api/availability/{id}`
+
+Usuwa dostępność agenta.
+
 ## Statusy harmonogramu
 
 - `draft` - Szkic
@@ -285,6 +476,24 @@ Zaawansowana optymalizacja używająca algorytmu Integer Linear Programming:
    - Weryfikacja nakładających się przypisań
    - Obliczenie metryk jakości
 
+### 3. Reassignment agentów
+
+System reassignment umożliwia dynamiczną zmianę dostępności agentów:
+
+1. **Identyfikacja konfliktów:**
+   - Sprawdzenie nakładających się przypisań
+   - Weryfikacja nowej dostępności
+
+2. **Znalezienie zastępców:**
+   - Wyszukiwanie dostępnych agentów
+   - Sprawdzenie umiejętności i efektywności
+   - Optymalizacja wyboru zastępcy
+
+3. **Wykonanie zmian:**
+   - Przeprowadzenie reassignment
+   - Aktualizacja harmonogramu
+   - Logowanie zmian
+
 ## Metryki jakości
 
 ### Podstawowe metryki:
@@ -318,17 +527,30 @@ curl http://localhost:8000/api/schedules/1/metrics
 curl -X POST http://localhost:8000/api/schedules/1/optimize-ilp
 ```
 
-### Optymalizacja istniejącego harmonogramu:
+### Reassignment agenta:
 
 ```bash
-# 1. Sprawdź obecny stan
-curl http://localhost:8000/api/schedules/1
+# 1. Sprawdź preview reassignment
+curl -X POST http://localhost:8000/api/schedules/1/reassignment-preview \
+  -H "Content-Type: application/json" \
+  -d '{"agentId": 5, "newAvailability": [{"startDate": "2024-01-01", "endDate": "2024-01-03"}]}'
 
-# 2. Wykonaj optymalizację
-curl -X POST http://localhost:8000/api/schedules/1/optimize
+# 2. Wykonaj reassignment
+curl -X POST http://localhost:8000/api/schedules/1/reassign-agent \
+  -H "Content-Type: application/json" \
+  -d '{"agentId": 5, "newAvailability": [{"startDate": "2024-01-01", "endDate": "2024-01-03"}]}'
+```
 
-# 3. Sprawdź wyniki
-curl http://localhost:8000/api/schedules/1/metrics
+### Zarządzanie dostępnością:
+
+```bash
+# 1. Dodaj dostępność agenta
+curl -X POST http://localhost:8000/api/availability \
+  -H "Content-Type: application/json" \
+  -d '{"agentId": 5, "startDate": "2024-01-01T09:00:00Z", "endDate": "2024-01-01T17:00:00Z"}'
+
+# 2. Sprawdź dostępności agenta
+curl "http://localhost:8000/api/availability?agentId=5"
 ```
 
 ## Obsługa błędów
@@ -339,7 +561,7 @@ Wszystkie endpointy zwracają standardowe kody HTTP:
 - `201` - Utworzono
 - `400` - Błędne żądanie
 - `404` - Nie znaleziono
-- `409` - Konflikt
+- `409` - Konflikt (np. nakładające się dostępności)
 - `500` - Błąd serwera
 
 Przykład błędu:
@@ -347,5 +569,12 @@ Przykład błędu:
 {
   "success": false,
   "message": "Harmonogram nie został znaleziony"
+}
+```
+
+Przykład błędu konfliktu:
+```json
+{
+  "error": "Availability period overlaps with existing period"
 }
 ``` 

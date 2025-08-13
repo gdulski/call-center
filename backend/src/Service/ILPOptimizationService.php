@@ -38,6 +38,10 @@ class ILPOptimizationService
 
         $availableAgents = $this->getAvailableAgentsWithEfficiency($schedule->getQueueType()->getId());
         
+        // Dodaj debug logging
+        error_log("ILP Debug: Found " . count($predictions) . " predictions");
+        error_log("ILP Debug: Found " . count($availableAgents) . " available agents");
+        
         // Sprawdź czy są dostępni agenci
         if (empty($availableAgents)) {
             throw new \RuntimeException(
@@ -48,8 +52,16 @@ class ILPOptimizationService
         // Przygotuj dane dla algorytmu ILP
         $ilpData = $this->prepareILPData($schedule, $predictions, $availableAgents);
         
+        // Debug: sprawdź dane wejściowe
+        error_log("ILP Debug: Hours count: " . count($ilpData['hours']));
+        error_log("ILP Debug: Agents count: " . count($ilpData['agents']));
+        error_log("ILP Debug: Demand count: " . count($ilpData['demand']));
+        
         // Wykonaj optymalizację
         $optimizedAssignments = $this->solveILP($ilpData);
+        
+        // Debug: sprawdź wynik
+        error_log("ILP Debug: Generated " . count($optimizedAssignments) . " assignments");
         
         return $optimizedAssignments;
     }
@@ -100,8 +112,14 @@ class ILPOptimizationService
         $efficiency = $ilpData['efficiency'];
         $schedule = $ilpData['schedule'];
         
+        // Debug: sprawdź dane wejściowe
+        error_log("ILP Debug: solveILP input - hours: " . count($hours) . ", agents: " . count($agents) . ", demand: " . count($demand));
+        error_log("ILP Debug: Sample hours: " . implode(', ', array_slice($hours, 0, 3)));
+        error_log("ILP Debug: Sample agents: " . implode(', ', array_slice($agents, 0, 3)));
+        
         // Sprawdź czy są dostępni agenci
         if (empty($agents)) {
+            error_log("ILP Debug: No agents available");
             return $assignments; // Brak agentów - zwróć pustą listę
         }
         
@@ -119,16 +137,28 @@ class ILPOptimizationService
             return $efficiency[$b] <=> $efficiency[$a];
         });
         
-        // Dla każdej godziny
+        // Grupuj godziny według dni
+        $dailyDemand = [];
         foreach ($hours as $hourKey) {
             $hourDateTime = \DateTime::createFromFormat('Y-m-d H:i', $hourKey);
-            $requiredCalls = $demand[$hourKey];
+            $dayKey = $hourDateTime->format('Y-m-d');
             
-            if ($requiredCalls <= 0) {
+            if (!isset($dailyDemand[$dayKey])) {
+                $dailyDemand[$dayKey] = 0;
+            }
+            $dailyDemand[$dayKey] += $demand[$hourKey];
+        }
+        
+        // Dla każdego dnia
+        foreach ($dailyDemand as $dayKey => $totalDailyCalls) {
+            if ($totalDailyCalls <= 0) {
                 continue;
             }
             
-            // Oblicz wymagane godziny pracy
+            // Debug: sprawdź dane dzienne
+            error_log("ILP Debug: Processing day $dayKey with $totalDailyCalls calls");
+            
+            // Oblicz wymagane godziny pracy na dzień
             $callsPerHourPerAgent = 10 * $avgEfficiency; // 10 połączeń na godzinę jako baseline
             
             // Sprawdź czy nie dzielimy przez zero
@@ -136,22 +166,38 @@ class ILPOptimizationService
                 $callsPerHourPerAgent = 1; // Domyślna wartość
             }
             
-            $requiredHours = $requiredCalls / $callsPerHourPerAgent;
+            $requiredHoursPerDay = $totalDailyCalls / $callsPerHourPerAgent;
             
-            // Przydziel agentów używając algorytmu zachłannego z priorytetem efektywności
+            // Debug: sprawdź obliczenia
+            error_log("ILP Debug: Day $dayKey - callsPerHourPerAgent: $callsPerHourPerAgent, requiredHoursPerDay: $requiredHoursPerDay");
+            
+            // Przydziel agentów na cały dzień - poprawiona logika
             $assignedHours = 0;
-            $maxHoursPerAgent = 1.0;
+            $maxHoursPerAgent = 8.0; // Pełna zmiana - 8 godzin
+            $minHoursPerAgent = 4.0; // Minimalna zmiana - 4 godziny
+            $agentsUsed = 0;
             
             foreach ($agents as $agentId) {
-                if ($assignedHours >= $requiredHours) {
-                    break;
+                // Sprawdź czy agent ma dostępność w tym dniu
+                $agentAvailability = $this->getAgentAvailabilityForDay($agentId, $dayKey);
+                if ($agentAvailability <= 0) {
+                    continue; // Pomiń agenta bez dostępności
                 }
                 
                 $agentEfficiency = $efficiency[$agentId];
-                $hoursToAssign = min($maxHoursPerAgent, $requiredHours - $assignedHours);
                 
-                if ($hoursToAssign > 0) {
-                    // Utwórz przypisanie
+                // Oblicz godziny do przypisania - lepsze rozłożenie
+                $remainingHours = $requiredHoursPerDay - $assignedHours;
+                $agentMaxHours = min($maxHoursPerAgent, $agentAvailability);
+                
+                if ($remainingHours > 0 && $agentMaxHours >= $minHoursPerAgent) {
+                    // Przypisz agentowi maksymalnie dostępne godziny lub wymagane
+                    $hoursToAssign = min($agentMaxHours, $remainingHours);
+                    
+                    // Debug: sprawdź przypisania
+                    error_log("ILP Debug: Agent $agentId - efficiency: $agentEfficiency, hoursToAssign: $hoursToAssign, agentAvailability: $agentAvailability");
+                    
+                    // Utwórz przypisanie na cały dzień
                     $assignment = new ScheduleShiftAssignment();
                     $assignment->setSchedule($schedule);
                     
@@ -159,16 +205,31 @@ class ILPOptimizationService
                     $user = $this->entityManager->getReference(User::class, $agentId);
                     $assignment->setUser($user);
                     
-                    $assignment->setStartTime(clone $hourDateTime);
+                    // Ustaw początek na 9:00 danego dnia
+                    $startTime = \DateTime::createFromFormat('Y-m-d H:i', $dayKey . ' 09:00');
+                    $assignment->setStartTime($startTime);
                     
-                    $endTime = clone $hourDateTime;
+                    // Ustaw koniec na podstawie przypisanych godzin
+                    $endTime = clone $startTime;
                     $endTime->modify('+' . round($hoursToAssign * 60) . ' minutes');
                     $assignment->setEndTime($endTime);
                     
                     $assignments[] = $assignment;
                     $assignedHours += $hoursToAssign;
+                    $agentsUsed++;
+                    
+                    // Debug: potwierdź utworzenie przypisania
+                    error_log("ILP Debug: Created assignment for agent $agentId on $dayKey: {$startTime->format('H:i')} - {$endTime->format('H:i')} ({$hoursToAssign}h)");
+                    
+                    // Jeśli pokryliśmy zapotrzebowanie, zakończ
+                    if ($assignedHours >= $requiredHoursPerDay) {
+                        break;
+                    }
                 }
             }
+            
+            // Debug: podsumowanie dnia
+            error_log("ILP Debug: Day $dayKey completed - assignedHours: $assignedHours, requiredHours: $requiredHoursPerDay, agentsUsed: $agentsUsed");
         }
         
         return $assignments;
@@ -217,6 +278,40 @@ class ILPOptimizationService
         }
         
         return $agents;
+    }
+
+    /**
+     * Sprawdza dostępność agenta w konkretnym dniu
+     */
+    private function getAgentAvailabilityForDay(int $agentId, string $dayKey): float
+    {
+        $startDate = \DateTime::createFromFormat('Y-m-d', $dayKey)->setTime(0, 0, 0);
+        $endDate = (clone $startDate)->setTime(23, 59, 59);
+        
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('aa.startDate, aa.endDate')
+           ->from('App\Entity\AgentAvailability', 'aa')
+           ->where('aa.agent = :agentId')
+           ->andWhere('aa.startDate >= :startDate')
+           ->andWhere('aa.endDate <= :endDate')
+           ->setParameter('agentId', $agentId)
+           ->setParameter('startDate', $startDate)
+           ->setParameter('endDate', $endDate);
+        
+        $results = $qb->getQuery()->getResult();
+        
+        $totalHours = 0.0;
+        foreach ($results as $result) {
+            $start = $result['startDate'];
+            $end = $result['endDate'];
+            
+            // Oblicz różnicę w godzinach
+            $diff = $end->diff($start);
+            $hours = $diff->h + ($diff->i / 60.0) + ($diff->s / 3600.0);
+            $totalHours += $hours;
+        }
+        
+        return $totalHours;
     }
 
     /**

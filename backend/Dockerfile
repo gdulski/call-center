@@ -1,4 +1,4 @@
-FROM php:8.2-cli
+FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -39,5 +39,5 @@ RUN chown -R www-data:www-data /var/www/html \
 # # Expose port
 EXPOSE 8000
 
-# # Start Symfony server
-CMD ["symfony", "server:start", "--listen-ip=0.0.0.0", "--port=8000", "--no-tls", "--no-interaction", "--allow-http"] 
+# Keep container running with FPM
+CMD ["php-fpm"] 
