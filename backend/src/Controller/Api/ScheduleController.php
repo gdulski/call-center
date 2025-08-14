@@ -80,8 +80,8 @@ class ScheduleController extends AbstractController
                 'id' => $assignment->getId(),
                 'agentId' => $assignment->getUser()->getId(),
                 'agentName' => $assignment->getUser()->getName(),
-                'startTime' => $assignment->getStartTime()->format('Y-m-d H:i'),
-                'endTime' => $assignment->getEndTime()->format('Y-m-d H:i'),
+                'startTime' => $assignment->getStartTime()->format('Y-m-d\TH:i:sP'),
+                'endTime' => $assignment->getEndTime()->format('Y-m-d\TH:i:sP'),
                 'duration' => $assignment->getDurationInHours()
             ];
         }

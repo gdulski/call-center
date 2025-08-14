@@ -1,9 +1,9 @@
 import React from 'react';
+import { formatDateOnlyUTC } from '../../utils/dateUtils';
 
 const ScheduleList = ({ schedules, onEdit, isLoading }) => {
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pl-PL');
+    return formatDateOnlyUTC(dateString);
   };
 
   const getStatusText = (status) => {

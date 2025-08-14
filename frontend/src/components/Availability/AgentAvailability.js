@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import availabilityService from '../../services/availabilityService';
+import { formatDateUTC } from '../../utils/dateUtils';
 import './AgentAvailability.css';
 
 const AgentAvailability = ({ agentId, agentName }) => {
@@ -189,8 +190,7 @@ const AgentAvailability = ({ agentId, agentName }) => {
   };
 
   const formatDateForDisplay = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('pl-PL');
+    return formatDateUTC(dateString);
   };
 
   if (!agentId) {

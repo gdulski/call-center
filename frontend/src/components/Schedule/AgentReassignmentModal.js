@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import scheduleService from '../../services/scheduleService';
+import { formatDateTimeUTC } from '../../utils/dateUtils';
 
 const AgentReassignmentModal = ({ schedule, agent, onReassign, onClose }) => {
   const [newAvailability, setNewAvailability] = useState({
@@ -66,14 +67,7 @@ const AgentReassignmentModal = ({ schedule, agent, onReassign, onClose }) => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pl-PL', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTimeUTC(dateString);
   };
 
   const formatDuration = (hours) => {
