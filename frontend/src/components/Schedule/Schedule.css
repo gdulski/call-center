@@ -62,6 +62,33 @@
   font-size: 12px;
 }
 
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+  border: 1px solid #ffc107;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+  border-color: #d39e00;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: white;
+  border: 1px solid #28a745;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+.btn-success:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
 /* Alerts */
 .alert {
   padding: 12px;
@@ -306,6 +333,531 @@
   color: #333;
 }
 
+.assignments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.assignments-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.assignments-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.assignments-count {
+  font-weight: 500;
+}
+
+.filtered-count {
+  color: #007bff;
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.day-filter {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.day-filter:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.view-mode-toggle {
+  display: flex;
+  gap: 10px;
+}
+
+.view-mode-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:hover {
+  border-color: #007bff;
+  background-color: #f8f9fa;
+}
+
+.view-mode-btn.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* Filter Info Styles */
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.filter-remove {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.filter-remove:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.clear-filters {
+  background: none;
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.clear-filters:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Calendar View Styles */
+.calendar-view {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-header {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.time-column-header {
+  padding: 15px 10px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+}
+
+.day-column-header {
+  padding: 15px 10px;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+}
+
+.day-column-header:last-child {
+  border-right: none;
+}
+
+.day-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.day-date {
+  color: #666;
+  font-size: 12px;
+}
+
+.calendar-body {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.time-column {
+  border-right: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.time-slot {
+  height: 60px;
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #666;
+  border-bottom: 1px solid #e0e0e0;
+  position: relative;
+}
+
+.time-label {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.assignments-count-badge {
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.day-column {
+  border-right: 1px solid #e0e0e0;
+  position: relative;
+}
+
+.day-column:last-child {
+  border-right: none;
+}
+
+.day-column .time-slot {
+  border-bottom: 1px solid #e0e0e0;
+  position: relative;
+}
+
+/* Assignment Blocks */
+.assignment-block {
+  position: absolute;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+  min-height: 40px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  /* Dodaj margines między blokami */
+  margin-right: 2px;
+  /* Usuń przezroczystość - bloki obok siebie muszą być w pełni widoczne */
+  opacity: 1;
+}
+
+.assignment-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, #0056b3, #004085);
+  z-index: 100; /* Podnieś z-index przy hover */
+}
+
+.assignment-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.assignment-block .agent-name {
+  font-weight: 600;
+  font-size: 11px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.assignment-block .assignment-time {
+  font-size: 9px;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+
+/* Dodaj różne kolory dla różnych agentów - teraz obok siebie */
+.assignment-block:nth-child(2n) {
+  background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.assignment-block:nth-child(2n):hover {
+  background: linear-gradient(135deg, #20c997, #1ea085);
+}
+
+.assignment-block:nth-child(3n) {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+}
+
+.assignment-block:nth-child(3n):hover {
+  background: linear-gradient(135deg, #e0a800, #d39e00);
+}
+
+.assignment-block:nth-child(4n) {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.assignment-block:nth-child(4n):hover {
+  background: linear-gradient(135deg, #c82333, #bd2130);
+}
+
+.assignment-block:nth-child(5n) {
+  background: linear-gradient(135deg, #6f42c1, #5a2d91);
+}
+
+.assignment-block:nth-child(5n):hover {
+  background: linear-gradient(135deg, #5a2d91, #4a1f7a);
+}
+
+.assignment-block:nth-child(6n) {
+  background: linear-gradient(135deg, #fd7e14, #e55a00);
+}
+
+.assignment-block:nth-child(6n):hover {
+  background: linear-gradient(135deg, #e55a00, #cc4d00);
+}
+
+.assignment-block:nth-child(7n) {
+  background: linear-gradient(135deg, #20c997, #17a2b8);
+}
+
+.assignment-block:nth-child(7n):hover {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.assignment-block:nth-child(8n) {
+  background: linear-gradient(135deg, #e83e8c, #c73e6f);
+}
+
+.assignment-block:nth-child(8n):hover {
+  background: linear-gradient(135deg, #c73e6f, #a62e5a);
+}
+
+/* Usuń cienie warstwowe - nie są już potrzebne */
+/* Dodaj lepsze cienie dla bloków obok siebie */
+.assignment-block {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.assignment-block:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Agent Cards View Styles */
+.agent-cards-view {
+  margin-top: 20px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.agent-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.agent-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.agent-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.agent-card-header .agent-name {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.agent-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.total-hours {
+  background: #007bff;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assignments-count {
+  color: #666;
+  font-size: 12px;
+}
+
+.agent-schedule h6 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.weekly-timeline {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+.day-schedule {
+  text-align: center;
+}
+
+.day-label {
+  margin-bottom: 10px;
+}
+
+.day-label .day-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.day-label .day-date {
+  color: #666;
+  font-size: 10px;
+}
+
+.day-assignments {
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.no-assignment {
+  color: #999;
+  font-size: 11px;
+  font-style: italic;
+  padding: 8px 4px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.day-assignment {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.assignment-time {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.assignment-duration {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.agent-actions {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
 .agent-info {
   display: flex;
   flex-direction: column;
@@ -543,57 +1095,6 @@
   font-size: 16px;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .schedule-management {
-    padding: 10px;
-  }
-
-  .page-header {
-    flex-direction: column;
-    gap: 15px;
-    align-items: stretch;
-  }
-
-  .header-actions {
-    justify-content: center;
-  }
-
-  .table {
-    font-size: 12px;
-  }
-
-  .table th,
-  .table td {
-    padding: 8px 6px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tabs {
-    flex-direction: column;
-  }
-
-  .tab-button {
-    text-align: left;
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .tab-button.active {
-    border-bottom-color: #007bff;
-  }
-}
-
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -791,36 +1292,247 @@
   color: #721c24;
 }
 
-/* Button Styles */
-.btn-warning {
-  background-color: #ffc107;
-  color: #212529;
-  border: 1px solid #ffc107;
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .calendar-header,
+  .calendar-body {
+    grid-template-columns: 60px repeat(7, 1fr);
+  }
+  
+  .time-column-header,
+  .time-column {
+    width: 60px;
+  }
+  
+  .time-slot {
+    height: 50px;
+    font-size: 11px;
+  }
+  
+  .assignment-block {
+    padding: 6px;
+  }
+  
+  .assignment-block .agent-name {
+    font-size: 11px;
+  }
+  
+  .assignment-block .assignment-time {
+    font-size: 9px;
+  }
+  
+  .cards-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+  
+  .weekly-timeline {
+    gap: 8px;
+  }
+  
+  .day-assignment {
+    padding: 5px 6px;
+    font-size: 10px;
+  }
+  
+  .assignment-time {
+    font-size: 10px;
+  }
+  
+  .assignment-duration {
+    font-size: 9px;
+  }
 }
 
-.btn-warning:hover:not(:disabled) {
-  background-color: #e0a800;
-  border-color: #d39e00;
-}
-
-.btn-success {
-  background-color: #28a745;
-  color: white;
-  border: 1px solid #28a745;
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
-
-.btn-success:disabled {
-  background-color: #6c757d;
-  border-color: #6c757d;
-}
-
-/* Responsive Modal */
 @media (max-width: 768px) {
+  .schedule-management {
+    padding: 10px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: center;
+  }
+
+  .table {
+    font-size: 12px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 6px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab-button {
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .tab-button.active {
+    border-bottom-color: #007bff;
+  }
+
+  .assignments-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .assignments-controls {
+    align-items: stretch;
+  }
+  
+  .assignments-info {
+    justify-content: center;
+    text-align: center;
+  }
+  
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    min-width: auto;
+  }
+  
+  .filter-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .filter-tag {
+    align-self: flex-start;
+  }
+  
+  .clear-filters {
+    align-self: flex-start;
+  }
+  
+  .view-mode-toggle {
+    justify-content: center;
+  }
+  
+  .calendar-view {
+    font-size: 12px;
+  }
+  
+  .calendar-header,
+  .calendar-body {
+    grid-template-columns: 50px repeat(7, 1fr);
+  }
+  
+  .time-column-header,
+  .time-column {
+    width: 50px;
+  }
+  
+  .time-slot {
+    height: 40px;
+    font-size: 10px;
+    padding: 2px 5px;
+  }
+  
+  .day-column-header {
+    padding: 10px 5px;
+  }
+  
+  .day-name {
+    font-size: 12px;
+  }
+  
+  .day-date {
+    font-size: 10px;
+  }
+  
+  .assignment-block {
+    padding: 4px;
+    left: 1px;
+    right: 1px;
+  }
+  
+  .assignment-block .agent-name {
+    font-size: 10px;
+  }
+  
+  .assignment-block .assignment-time {
+    font-size: 8px;
+  }
+  
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .agent-card {
+    padding: 15px;
+  }
+  
+  .agent-card-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .agent-stats {
+    align-items: flex-start;
+  }
+  
+  .weekly-timeline {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+  
+  .day-schedule {
+    font-size: 11px;
+  }
+  
+  .day-label .day-name {
+    font-size: 11px;
+  }
+  
+  .day-label .day-date {
+    font-size: 9px;
+  }
+  
+  .day-assignments {
+    min-height: 50px;
+  }
+  
+  .day-assignment {
+    padding: 4px 5px;
+    font-size: 9px;
+  }
+  
+  .assignment-time {
+    font-size: 9px;
+  }
+  
+  .assignment-duration {
+    font-size: 8px;
+  }
+  
   .reassignment-modal {
     width: 95%;
     margin: 10px;
