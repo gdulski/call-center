@@ -501,7 +501,7 @@ class ScheduleGenerationService
     }
 
     /**
-     * Optymalizuje istniejący harmonogram używając algorytmu ILP
+     * Optymalizuje istniejący harmonogram używając algorytmu heurystycznego
      */
     public function optimizeSchedule(int $scheduleId): array
     {
@@ -523,8 +523,8 @@ class ScheduleGenerationService
         // Pobierz dostępnych agentów
         $availableAgents = $this->getAvailableAgentsWithEfficiency($schedule->getQueueType()->getId());
 
-        // Wykonaj optymalizację ILP
-        $optimizedAssignments = $this->performILPOptimization(
+        // Wykonaj optymalizację heurystyczną
+        $optimizedAssignments = $this->performHeuristicOptimization(
             $schedule,
             $predictions,
             $availableAgents,
@@ -538,21 +538,21 @@ class ScheduleGenerationService
             'scheduleId' => $scheduleId,
             'optimizedAssignmentsCount' => count($optimizedAssignments),
             'totalOptimizedHours' => $schedule->getTotalAssignedHours(),
-            'message' => 'Harmonogram został zoptymalizowany'
+            'message' => 'Harmonogram został zoptymalizowany algorytmem heurystycznym'
         ];
     }
 
     /**
-     * Wykonuje optymalizację ILP
+     * Wykonuje optymalizację heurystyczną
      */
-    private function performILPOptimization(
+    private function performHeuristicOptimization(
         Schedule $schedule,
         array $predictions,
         array $availableAgents,
         array $currentAssignments
     ): array {
-        // Implementacja uproszczonego algorytmu ILP
-        // W rzeczywistej implementacji można użyć biblioteki jak GLPK lub CBC
+        // Implementacja algorytmu heurystycznego opartego na regułach biznesowych
+        // Używa prostych reguł sortowania i przypisywania agentów
         
         $optimizedAssignments = [];
         $hourlyPredictions = $this->groupPredictionsByHour($predictions);
