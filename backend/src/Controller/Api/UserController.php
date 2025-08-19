@@ -29,7 +29,7 @@ final class UserController extends BaseApiController
     #[Route('', name: 'api_users_index', methods: ['GET'])]
     public function index(): JsonResponse
     {
-        $users = $this->userRepository->findAll();
+        $users = $this->userRepository->findAllWithRelations();
         
         return $this->successResponse($users, Response::HTTP_OK, [
             'groups' => ['user:read']

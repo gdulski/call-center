@@ -101,8 +101,30 @@ class ScheduleRepository extends ServiceEntityRepository
     public function findAllOrderedByWeekStartDate(): array
     {
         return $this->createQueryBuilder('s')
+            ->leftJoin('s.queueType', 'qt')
+            ->leftJoin('s.shiftAssignments', 'ssa')
+            ->addSelect('qt')
+            ->addSelect('ssa')
             ->orderBy('s.weekStartDate', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Find schedule by ID with all relations loaded
+     */
+    public function findWithRelations(int $id): ?Schedule
+    {
+        return $this->createQueryBuilder('s')
+            ->leftJoin('s.queueType', 'qt')
+            ->leftJoin('s.shiftAssignments', 'ssa')
+            ->leftJoin('ssa.user', 'u')
+            ->addSelect('qt')
+            ->addSelect('ssa')
+            ->addSelect('u')
+            ->andWhere('s.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }

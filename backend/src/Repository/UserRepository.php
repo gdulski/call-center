@@ -54,4 +54,20 @@ class UserRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Find all users with relations loaded
+     */
+    public function findAllWithRelations(): array
+    {
+        return $this->createQueryBuilder('u')
+            ->leftJoin('u.agentQueueTypes', 'aqt')
+            ->leftJoin('aqt.queueType', 'qt')
+            ->leftJoin('u.agentAvailabilities', 'aa')
+            ->addSelect('aqt')
+            ->addSelect('qt')
+            ->addSelect('aa')
+            ->getQuery()
+            ->getResult();
+    }
 } 
