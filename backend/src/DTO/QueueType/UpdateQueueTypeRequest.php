@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\DTO;
+namespace App\DTO\QueueType;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final readonly class CreateQueueTypeRequest
+final readonly class UpdateQueueTypeRequest
 {
     public function __construct(
         #[Assert\NotBlank(message: 'Name is required')]

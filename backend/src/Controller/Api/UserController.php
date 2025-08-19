@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\DTO\CreateUserRequest;
-use App\DTO\UpdateUserRequest;
+use App\DTO\User\CreateUserRequest;
+use App\DTO\User\UpdateUserRequest;
 use App\Exception\UserValidationException;
 use App\Repository\UserRepository;
 use App\Repository\QueueTypeRepository;
-use App\Service\UserService;
-use App\Service\UserValidationService;
+use App\Service\User\UserService;
+use App\Service\User\UserValidationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

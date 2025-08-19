@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Service\Schedule;
 
 use App\Entity\Schedule;
 use App\Entity\QueueType;
@@ -10,9 +10,16 @@ use App\Enum\ScheduleStatus;
 use App\Exception\ScheduleValidationException;
 use App\Repository\ScheduleRepository;
 use App\Repository\QueueTypeRepository;
-use App\Service\AgentReassignmentService;
+use App\Service\Agent\AgentReassignmentService;
+use App\DTO\Schedule\ScheduleCreationResponse;
+use App\DTO\Schedule\ScheduleListItemResponse;
+use App\DTO\Schedule\ScheduleDetailsResponse;
+use App\DTO\Schedule\ScheduleOptimizationResponse;
+use App\DTO\Schedule\ScheduleMetricsResponse;
+use App\DTO\Schedule\ScheduleStatusUpdateResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use App\DTO\Schedule\ScheduleGenerationResponse;
 
 final readonly class ScheduleService
 {
@@ -26,7 +33,7 @@ final readonly class ScheduleService
         private LoggerInterface $logger
     ) {}
 
-    public function createSchedule(int $queueTypeId, string $weekStartDate, string $optimizationType): array
+    public function createSchedule(int $queueTypeId, string $weekStartDate, string $optimizationType): ScheduleCreationResponse
     {
         try {
             $this->entityManager->beginTransaction();
@@ -51,16 +58,16 @@ final readonly class ScheduleService
 
             $this->entityManager->commit();
 
-            return [
-                'id' => $schedule->getId(),
-                'queueType' => $queueType->getName(),
-                'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
-                'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
-                'status' => $schedule->getStatus()->value,
-                'optimizationType' => $optimizationType,
-                'generationResult' => $generationResult,
-                'optimizationResult' => $optimizationResult
-            ];
+            return new ScheduleCreationResponse(
+                id: $schedule->getId(),
+                queueType: $queueType->getName(),
+                weekStartDate: $schedule->getWeekStartDate()->format('Y-m-d'),
+                weekEndDate: $schedule->getWeekEndDate()->format('Y-m-d'),
+                status: $schedule->getStatus()->value,
+                optimizationType: $optimizationType,
+                generationResult: $generationResult->toArray(),
+                optimizationResult: $optimizationResult
+            );
 
         } catch (\Exception $e) {
             $this->entityManager->rollback();
@@ -74,59 +81,62 @@ final readonly class ScheduleService
         return $this->scheduleRepository->findWithRelations($id);
     }
 
+    /**
+     * @return ScheduleListItemResponse[]
+     */
     public function findAllOrderedByWeekStartDate(): array
     {
         $schedules = $this->scheduleRepository->findAllOrderedByWeekStartDate();
         
         $data = [];
         foreach ($schedules as $schedule) {
-            $data[] = [
-                'id' => $schedule->getId(),
-                'queueType' => [
-                    'id' => $schedule->getQueueType()->getId(),
-                    'name' => $schedule->getQueueType()->getName()
-                ],
-                'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
-                'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
-                'weekIdentifier' => $schedule->getWeekIdentifier(),
-                'status' => $schedule->getStatus()->value,
-                'totalAssignedHours' => $schedule->getTotalAssignedHours(),
-                'assignmentsCount' => $schedule->getShiftAssignments()->count()
-            ];
+            $data[] = new ScheduleListItemResponse(
+                id: $schedule->getId(),
+                queueType: new \App\DTO\QueueTypeInfo(
+                    id: $schedule->getQueueType()->getId(),
+                    name: $schedule->getQueueType()->getName()
+                ),
+                weekStartDate: $schedule->getWeekStartDate()->format('Y-m-d'),
+                weekEndDate: $schedule->getWeekEndDate()->format('Y-m-d'),
+                weekIdentifier: $schedule->getWeekIdentifier(),
+                status: $schedule->getStatus()->value,
+                totalAssignedHours: $schedule->getTotalAssignedHours(),
+                assignmentsCount: $schedule->getShiftAssignments()->count()
+            );
         }
         
         return $data;
     }
 
-    public function getScheduleDetails(Schedule $schedule): array
+    public function getScheduleDetails(Schedule $schedule): ScheduleDetailsResponse
     {
         $assignments = [];
         foreach ($schedule->getShiftAssignments() as $assignment) {
-            $assignments[] = [
-                'id' => $assignment->getId(),
-                'agentId' => $assignment->getUser()->getId(),
-                'agentName' => $assignment->getUser()->getName(),
-                'startTime' => $assignment->getStartTime()->format('Y-m-d\TH:i:sP'),
-                'endTime' => $assignment->getEndTime()->format('Y-m-d\TH:i:sP'),
-                'duration' => $assignment->getDurationInHours()
-            ];
+            $assignments[] = new \App\DTO\ScheduleAssignmentInfo(
+                id: $assignment->getId(),
+                agentId: $assignment->getUser()->getId(),
+                agentName: $assignment->getUser()->getName(),
+                startTime: $assignment->getStartTime()->format('Y-m-d\TH:i:sP'),
+                endTime: $assignment->getEndTime()->format('Y-m-d\TH:i:sP'),
+                duration: $assignment->getDurationInHours()
+            );
         }
         
-        return [
-            'id' => $schedule->getId(),
-            'queueType' => [
-                'id' => $schedule->getQueueType()->getId(),
-                'name' => $schedule->getQueueType()->getName()
-            ],
-            'weekStartDate' => $schedule->getWeekStartDate()->format('Y-m-d'),
-            'weekEndDate' => $schedule->getWeekEndDate()->format('Y-m-d'),
-            'status' => $schedule->getStatus()->value,
-            'totalAssignedHours' => $schedule->getTotalAssignedHours(),
-            'assignments' => $assignments
-        ];
+        return new ScheduleDetailsResponse(
+            id: $schedule->getId(),
+            queueType: new \App\DTO\QueueTypeInfo(
+                id: $schedule->getQueueType()->getId(),
+                name: $schedule->getQueueType()->getName()
+            ),
+            weekStartDate: $schedule->getWeekStartDate()->format('Y-m-d'),
+            weekEndDate: $schedule->getWeekEndDate()->format('Y-m-d'),
+            status: $schedule->getStatus()->value,
+            totalAssignedHours: $schedule->getTotalAssignedHours(),
+            assignments: $assignments
+        );
     }
 
-    public function generateSchedule(int $id): array
+    public function generateSchedule(int $id): ScheduleGenerationResponse
     {
         try {
             $result = $this->scheduleGenerationService->generateSchedule($id);
@@ -142,13 +152,13 @@ final readonly class ScheduleService
     {
         try {
             $result = $this->scheduleGenerationService->optimizeSchedule($id);
-            return $result;
+            return $result->toArray();
         } catch (\Exception $e) {
             throw new ScheduleValidationException(['Failed to optimize schedule: ' . $e->getMessage()]);
         }
     }
 
-    public function optimizeILP(int $id): array
+    public function optimizeILP(int $id): ScheduleOptimizationResponse
     {
         try {
             $schedule = $this->findScheduleById($id);
@@ -172,18 +182,18 @@ final readonly class ScheduleService
             $metrics = $this->ilpOptimizationService->calculateScheduleMetrics($schedule);
             $validation = $this->ilpOptimizationService->validateScheduleConstraints($schedule);
             
-            return [
-                'assignmentsCount' => count($optimizedAssignments),
-                'totalHours' => $metrics['totalHours'],
-                'metrics' => $metrics,
-                'validation' => $validation
-            ];
+            return new ScheduleOptimizationResponse(
+                assignmentsCount: count($optimizedAssignments),
+                totalHours: $metrics->totalHours,
+                metrics: $metrics->toArray(),
+                validation: $validation->toArray()
+            );
         } catch (\Exception $e) {
             throw new ScheduleValidationException(['Failed to optimize schedule with ILP: ' . $e->getMessage()]);
         }
     }
 
-    public function getScheduleMetrics(int $id): array
+    public function getScheduleMetrics(int $id): ScheduleMetricsResponse
     {
         try {
             $schedule = $this->findScheduleById($id);
@@ -194,16 +204,16 @@ final readonly class ScheduleService
             $metrics = $this->ilpOptimizationService->calculateScheduleMetrics($schedule);
             $validation = $this->ilpOptimizationService->validateScheduleConstraints($schedule);
             
-            return [
-                'metrics' => $metrics,
-                'validation' => $validation
-            ];
+            return new ScheduleMetricsResponse(
+                metrics: $metrics->toArray(),
+                validation: $validation->toArray()
+            );
         } catch (\Exception $e) {
             throw new ScheduleValidationException(['Failed to get schedule metrics: ' . $e->getMessage()]);
         }
     }
 
-    public function updateStatus(int $id, string $status): array
+    public function updateStatus(int $id, string $status): ScheduleStatusUpdateResponse
     {
         try {
             $schedule = $this->findScheduleById($id);
@@ -216,10 +226,10 @@ final readonly class ScheduleService
             
             $this->entityManager->flush();
             
-            return [
-                'id' => $schedule->getId(),
-                'status' => $schedule->getStatus()->value
-            ];
+            return new ScheduleStatusUpdateResponse(
+                id: $schedule->getId(),
+                status: $schedule->getStatus()->value
+            );
         } catch (\ValueError $e) {
             throw new ScheduleValidationException(['Invalid status']);
         } catch (\Exception $e) {
@@ -256,7 +266,7 @@ final readonly class ScheduleService
                 $newAvailability
             );
             
-            return $preview;
+            return array_map(fn(\App\DTO\AgentReassignmentPreviewResponse $item) => $item->toArray(), $preview);
         } catch (\Exception $e) {
             throw new ScheduleValidationException(['Failed to generate reassignment preview: ' . $e->getMessage()]);
         }
@@ -276,7 +286,7 @@ final readonly class ScheduleService
                 $newAvailability
             );
             
-            return $result;
+            return $result->toArray();
         } catch (\Exception $e) {
             throw new ScheduleValidationException(['Failed to reassign agent: ' . $e->getMessage()]);
         }
@@ -304,15 +314,16 @@ final readonly class ScheduleService
             return [
                 'type' => 'ilp',
                 'assignmentsCount' => count($optimizedAssignments),
-                'totalHours' => $metrics['totalHours'],
-                'metrics' => $metrics,
-                'validation' => $validation
+                'totalHours' => $metrics->totalHours,
+                'metrics' => $metrics->toArray(),
+                'validation' => $validation->toArray()
             ];
         } else {
             // Perform heuristic optimization
             $result = $this->scheduleGenerationService->optimizeSchedule($schedule->getId());
-            $result['type'] = 'heuristic';
-            return $result;
+            $resultArray = $result->toArray();
+            $resultArray['type'] = 'heuristic';
+            return $resultArray;
         }
     }
 }

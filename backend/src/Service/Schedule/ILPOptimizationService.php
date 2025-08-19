@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Service\Schedule;
 
 use App\Entity\Schedule;
 use App\Entity\ScheduleShiftAssignment;
@@ -13,6 +13,8 @@ use App\Repository\CallQueueVolumePredictionRepository;
 use App\Repository\AgentQueueTypeRepository;
 use App\Repository\UserRepository;
 use App\Repository\AgentAvailabilityRepository;
+use App\DTO\Schedule\ScheduleMetricsData;
+use App\DTO\Schedule\ScheduleValidationData;
 use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -379,9 +381,9 @@ final readonly class ILPOptimizationService
     }
 
     /**
-     * Oblicza metryki jakości harmonogramu
+     * Oblicza metryki harmonogramu
      */
-    public function calculateScheduleMetrics(Schedule $schedule): array
+    public function calculateScheduleMetrics(Schedule $schedule): ScheduleMetricsData
     {
         $assignments = $schedule->getShiftAssignments()->toArray();
         
@@ -407,20 +409,20 @@ final readonly class ILPOptimizationService
             $hourlyCoverage[$startHour] += $hours;
         }
         
-        return [
-            'totalHours' => $totalHours,
-            'agentCount' => count($agentHours),
-            'averageHoursPerAgent' => count($agentHours) > 0 ? $totalHours / count($agentHours) : 0,
-            'maxHoursPerAgent' => count($agentHours) > 0 ? max($agentHours) : 0,
-            'minHoursPerAgent' => count($agentHours) > 0 ? min($agentHours) : 0,
-            'hourlyCoverage' => $hourlyCoverage
-        ];
+        return new ScheduleMetricsData(
+            totalHours: $totalHours,
+            agentCount: count($agentHours),
+            averageHoursPerAgent: count($agentHours) > 0 ? $totalHours / count($agentHours) : 0,
+            maxHoursPerAgent: count($agentHours) > 0 ? max($agentHours) : 0,
+            minHoursPerAgent: count($agentHours) > 0 ? min($agentHours) : 0,
+            hourlyCoverage: $hourlyCoverage
+        );
     }
 
     /**
      * Sprawdza czy harmonogram spełnia ograniczenia
      */
-    public function validateScheduleConstraints(Schedule $schedule): array
+    public function validateScheduleConstraints(Schedule $schedule): ScheduleValidationData
     {
         $assignments = $schedule->getShiftAssignments()->toArray();
         $violations = [];
@@ -469,11 +471,11 @@ final readonly class ILPOptimizationService
             }
         }
         
-        return [
-            'isValid' => empty($violations),
-            'violations' => $violations,
-            'totalViolations' => count($violations)
-        ];
+        return new ScheduleValidationData(
+            isValid: empty($violations),
+            violations: $violations,
+            totalViolations: count($violations)
+        );
     }
 
     /**

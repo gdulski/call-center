@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Service;
+declare(strict_types=1);
+
+namespace App\Service\Agent;
 
 use App\Entity\Schedule;
 use App\Entity\ScheduleShiftAssignment;
@@ -8,6 +10,8 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Repository\ScheduleShiftAssignmentRepository;
 use App\Repository\AgentQueueTypeRepository;
+use App\DTO\AgentReassignmentResponse;
+use App\DTO\AgentReassignmentPreviewResponse;
 use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -15,7 +19,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Serwis do obsługi przypisania zastępczego agentów
  */
-class AgentReassignmentService
+final readonly class AgentReassignmentService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -28,7 +32,7 @@ class AgentReassignmentService
     /**
      * Przeprowadza reassignment agenta w harmonogramie
      */
-    public function reassignAgent(Schedule $schedule, int $agentId, array $newAvailability): array
+    public function reassignAgent(Schedule $schedule, int $agentId, array $newAvailability): AgentReassignmentResponse
     {
         $this->logger->info('Rozpoczęcie reassignment agenta', [
             'scheduleId' => $schedule->getId(),
@@ -54,27 +58,27 @@ class AgentReassignmentService
                     $oldAgent = $assignment->getUser();
                     $this->reassignAssignment($assignment, $replacementAgent);
                     
-                    $changes[] = [
-                        'assignmentId' => $assignment->getId(),
-                        'oldAgent' => [
-                            'id' => $oldAgent->getId(),
-                            'name' => $oldAgent->getName()
-                        ],
-                        'newAgent' => [
-                            'id' => $replacementAgent->getId(),
-                            'name' => $replacementAgent->getName()
-                        ],
-                        'date' => $assignment->getStartTime()->format('Y-m-d'),
-                        'time' => $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
-                        'duration' => $assignment->getDurationInHours()
-                    ];
+                    $changes[] = new \App\DTO\AgentReassignmentChange(
+                        assignmentId: $assignment->getId(),
+                        oldAgent: new \App\DTO\AgentInfo(
+                            id: $oldAgent->getId(),
+                            name: $oldAgent->getName()
+                        ),
+                        newAgent: new \App\DTO\AgentInfo(
+                            id: $replacementAgent->getId(),
+                            name: $replacementAgent->getName()
+                        ),
+                        date: $assignment->getStartTime()->format('Y-m-d'),
+                        time: $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
+                        duration: $assignment->getDurationInHours()
+                    );
                 } else {
-                    $unresolvedConflicts[] = [
-                        'assignmentId' => $assignment->getId(),
-                        'date' => $assignment->getStartTime()->format('Y-m-d'),
-                        'time' => $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
-                        'reason' => 'Brak dostępnego zastępcy z odpowiednimi umiejętnościami'
-                    ];
+                    $unresolvedConflicts[] = new \App\DTO\UnresolvedConflict(
+                        assignmentId: $assignment->getId(),
+                        date: $assignment->getStartTime()->format('Y-m-d'),
+                        time: $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
+                        reason: 'Brak dostępnego zastępcy z odpowiednimi umiejętnościami'
+                    );
                 }
             }
             
@@ -88,16 +92,16 @@ class AgentReassignmentService
                 'unresolvedCount' => count($unresolvedConflicts)
             ]);
             
-            return [
-                'success' => true,
-                'changes' => $changes,
-                'unresolvedConflicts' => $unresolvedConflicts,
-                'message' => sprintf(
+            return new AgentReassignmentResponse(
+                success: true,
+                changes: $changes,
+                unresolvedConflicts: $unresolvedConflicts,
+                message: sprintf(
                     'Pomyślnie zastąpiono %d przypisań. %d konfliktów nierozwiązanych.',
                     count($changes),
                     count($unresolvedConflicts)
                 )
-            ];
+            );
             
         } catch (\Exception $e) {
             $this->logger->error('Błąd podczas reassignment agenta', [
@@ -123,22 +127,22 @@ class AgentReassignmentService
         foreach ($conflictingAssignments as $assignment) {
             $replacementAgent = $this->findReplacementAgent($assignment, $agentId, $schedule);
             
-            $preview[] = [
-                'assignmentId' => $assignment->getId(),
-                'currentAgent' => [
-                    'id' => $assignment->getUser()->getId(),
-                    'name' => $assignment->getUser()->getName()
-                ],
-                'suggestedReplacement' => $replacementAgent ? [
-                    'id' => $replacementAgent->getId(),
-                    'name' => $replacementAgent->getName(),
-                    'efficiencyScore' => $this->getAgentEfficiencyScore($replacementAgent, $schedule)
-                ] : null,
-                'date' => $assignment->getStartTime()->format('Y-m-d'),
-                'time' => $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
-                'duration' => $assignment->getDurationInHours(),
-                'canBeReplaced' => $replacementAgent !== null
-            ];
+            $preview[] = new AgentReassignmentPreviewResponse(
+                assignmentId: $assignment->getId(),
+                currentAgent: new \App\DTO\AgentInfo(
+                    id: $assignment->getUser()->getId(),
+                    name: $assignment->getUser()->getName()
+                ),
+                suggestedReplacement: $replacementAgent ? new \App\DTO\AgentReplacementInfo(
+                    id: $replacementAgent->getId(),
+                    name: $replacementAgent->getName(),
+                    efficiencyScore: $this->getAgentEfficiencyScore($replacementAgent, $schedule)
+                ) : null,
+                date: $assignment->getStartTime()->format('Y-m-d'),
+                time: $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
+                duration: $assignment->getDurationInHours(),
+                canBeReplaced: $replacementAgent !== null
+            );
         }
         
         return $preview;

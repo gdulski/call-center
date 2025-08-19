@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DTO;
+namespace App\DTO\Schedule;
 
 use Symfony\Component\Validator\Constraints as Assert;
 

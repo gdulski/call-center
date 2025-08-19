@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Service\Schedule;
 
 use App\Entity\Schedule;
 use App\Entity\ScheduleShiftAssignment;
@@ -16,6 +16,8 @@ use App\Repository\AgentAvailabilityRepository;
 use App\Repository\CallQueueVolumePredictionRepository;
 use App\Repository\QueueTypeRepository;
 use App\Repository\AgentQueueTypeRepository;
+use App\DTO\Schedule\ScheduleGenerationResponse;
+use App\DTO\Schedule\ScheduleHeuristicOptimizationResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Enum\ScheduleStatus;
 use Psr\Log\LoggerInterface;
@@ -40,7 +42,7 @@ final readonly class ScheduleGenerationService
     /**
      * Generuje harmonogram z przypisaniem agentów na podstawie predykcji zapotrzebowania
      */
-    public function generateSchedule(int $scheduleId): array
+    public function generateSchedule(int $scheduleId): ScheduleGenerationResponse
     {
 
         $schedule = $this->scheduleRepository->find($scheduleId);
@@ -103,17 +105,17 @@ final readonly class ScheduleGenerationService
         $schedule->setStatus(ScheduleStatus::GENERATED);
         $this->entityManager->flush();
 
-        return [
-            'scheduleId' => $scheduleId,
-            'queueType' => $queueType->getName(),
-            'weekStartDate' => $weekStartDate->format('Y-m-d'),
-            'weekEndDate' => $weekEndDate->format('Y-m-d'),
-            'predictionsCount' => count($predictions),
-            'availableAgentsCount' => count($availableAgents),
-            'assignmentsCount' => count($assignments),
-            'totalAssignedHours' => $schedule->getTotalAssignedHours(),
-            'message' => 'Harmonogram został wygenerowany pomyślnie'
-        ];
+        return new ScheduleGenerationResponse(
+            scheduleId: $scheduleId,
+            queueType: $queueType->getName(),
+            weekStartDate: $weekStartDate->format('Y-m-d'),
+            weekEndDate: $weekEndDate->format('Y-m-d'),
+            predictionsCount: count($predictions),
+            availableAgentsCount: count($availableAgents),
+            assignmentsCount: count($assignments),
+            totalAssignedHours: $schedule->getTotalAssignedHours(),
+            message: 'Harmonogram został wygenerowany pomyślnie'
+        );
     }
 
     /**
@@ -474,7 +476,7 @@ final readonly class ScheduleGenerationService
     /**
      * Optymalizuje istniejący harmonogram używając algorytmu heurystycznego
      */
-    public function optimizeSchedule(int $scheduleId): array
+    public function optimizeSchedule(int $scheduleId): ScheduleHeuristicOptimizationResponse
     {
         $schedule = $this->scheduleRepository->find($scheduleId);
         if (!$schedule) {
@@ -505,12 +507,12 @@ final readonly class ScheduleGenerationService
         // Zastąp obecne przypisania zoptymalizowanymi
         $this->replaceAssignments($schedule, $optimizedAssignments);
 
-        return [
-            'scheduleId' => $scheduleId,
-            'optimizedAssignmentsCount' => count($optimizedAssignments),
-            'totalOptimizedHours' => $schedule->getTotalAssignedHours(),
-            'message' => 'Harmonogram został zoptymalizowany algorytmem heurystycznym'
-        ];
+        return new ScheduleHeuristicOptimizationResponse(
+            scheduleId: $scheduleId,
+            optimizedAssignmentsCount: count($optimizedAssignments),
+            totalOptimizedHours: $schedule->getTotalAssignedHours(),
+            message: 'Harmonogram został zoptymalizowany algorytmem heurystycznym'
+        );
     }
 
     /**

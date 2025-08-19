@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Service\QueueType;
 
 use App\DTO\CreateQueueTypeRequest;
 use App\DTO\UpdateQueueTypeRequest;

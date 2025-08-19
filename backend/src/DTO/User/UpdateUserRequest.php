@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\DTO;
+namespace App\DTO\User;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final readonly class CreateUserRequest
+final readonly class UpdateUserRequest
 {
     public function __construct(
         #[Assert\NotBlank(message: 'Name is required')]

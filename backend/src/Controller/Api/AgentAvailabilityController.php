@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\DTO\CreateAgentAvailabilityRequest;
-use App\DTO\UpdateAgentAvailabilityRequest;
+use App\DTO\Agent\CreateAgentAvailabilityRequest;
+use App\DTO\Agent\UpdateAgentAvailabilityRequest;
 use App\Exception\AgentAvailabilityValidationException;
-use App\Service\AgentAvailabilityService;
-use App\Service\AgentAvailabilityValidationService;
+use App\Service\Agent\AgentAvailabilityService;
+use App\Service\Agent\AgentAvailabilityValidationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Service\User;
 
 use App\Entity\User;
 use App\Entity\AgentQueueType;
@@ -11,6 +11,7 @@ use App\Enum\UserRole;
 use App\Exception\UserValidationException;
 use App\Repository\UserRepository;
 use App\Repository\QueueTypeRepository;
+use App\DTO\UserRoleResponse;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class UserService
@@ -80,19 +81,25 @@ final readonly class UserService
 
 
 
+    /**
+     * @return UserRoleResponse[]
+     */
     public function getAvailableRoles(): array
     {
         $roles = [];
         foreach (UserRole::cases() as $role) {
-            $roles[] = [
-                'value' => $role->value,
-                'label' => $role->value
-            ];
+            $roles[] = new UserRoleResponse(
+                value: $role->value,
+                label: $role->value
+            );
         }
 
         return $roles;
     }
 
+    /**
+     * @return string[]
+     */
     public function getAvailableRoleValues(): array
     {
         return array_column(UserRole::cases(), 'value');

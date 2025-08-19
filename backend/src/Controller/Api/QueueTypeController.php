@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\DTO\CreateQueueTypeRequest;
-use App\DTO\UpdateQueueTypeRequest;
+use App\DTO\QueueType\CreateQueueTypeRequest;
+use App\DTO\QueueType\UpdateQueueTypeRequest;
 use App\Exception\QueueTypeValidationException;
 use App\Repository\QueueTypeRepository;
-use App\Service\QueueTypeService;
-use App\Service\QueueTypeValidationService;
+use App\Service\QueueType\QueueTypeService;
+use App\Service\QueueType\QueueTypeValidationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

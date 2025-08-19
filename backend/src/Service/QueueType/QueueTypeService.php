@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace App\Service\QueueType;
 
 use App\Entity\QueueType;
 use App\Exception\QueueTypeValidationException;

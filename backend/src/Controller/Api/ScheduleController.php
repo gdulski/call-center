@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\DTO\AgentReassignmentRequest;
-use App\DTO\UpdateScheduleStatusRequest;
+use App\DTO\Agent\AgentReassignmentRequest;
+use App\DTO\Schedule\UpdateScheduleStatusRequest;
 use App\Exception\ScheduleValidationException;
-use App\Service\ScheduleService;
-use App\Service\ScheduleValidationService;
+use App\Service\Schedule\ScheduleService;
+use App\Service\Schedule\ScheduleValidationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
