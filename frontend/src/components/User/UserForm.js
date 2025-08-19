@@ -164,7 +164,7 @@ const UserForm = ({ user, onSubmit, onCancel, isLoading = false, availableRoles 
                         type="number"
                         id={`efficiency-${queueType.id}`}
                         min="0"
-                        max="1"
+                        max="100"
                         step="0.01"
                         value={efficiencyScores[queueType.id] || 0.00}
                         onChange={(e) => handleEfficiencyScoreChange(queueType.id, e.target.value)}
@@ -172,7 +172,7 @@ const UserForm = ({ user, onSubmit, onCancel, isLoading = false, availableRoles 
                         placeholder="0.00"
                         className="efficiency-input"
                       />
-                      <small className="help-text">Wartość od 0.00 do 1.00</small>
+                      <small className="help-text">Wartość od 0.00 do 100.00</small>
                     </div>
                   )}
                 </div>

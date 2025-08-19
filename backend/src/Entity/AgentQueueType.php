@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\AgentQueueTypeRepository;
@@ -7,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AgentQueueTypeRepository::class)]
-class AgentQueueType
+final class AgentQueueType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

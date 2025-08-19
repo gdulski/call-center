@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\AgentAvailabilityRepository;
@@ -7,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AgentAvailabilityRepository::class)]
-class AgentAvailability
+final class AgentAvailability
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
