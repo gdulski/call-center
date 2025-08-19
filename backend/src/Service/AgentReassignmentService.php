@@ -233,15 +233,7 @@ class AgentReassignmentService
      */
     private function findAvailableAgentsInTimeRange(array $agentIds, \DateTime $startTime, \DateTime $endTime, Schedule $schedule): array
     {
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('u')
-           ->from(User::class, 'u')
-           ->where('u.id IN (:agentIds)')
-           ->andWhere('u.role = :role')
-           ->setParameter('agentIds', $agentIds)
-           ->setParameter('role', UserRole::AGENT);
-        
-        $allAgents = $qb->getQuery()->getResult();
+        $allAgents = $this->userRepository->findAgentsByIds($agentIds);
         $availableAgents = [];
         
         foreach ($allAgents as $agent) {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Schedule;
@@ -19,7 +21,10 @@ use App\Enum\ScheduleStatus;
 use Psr\Log\LoggerInterface;
 use App\Enum\UserRole;
 
-class ScheduleGenerationService
+/**
+ * Serwis do obsługi przypisania zastępczego agentów
+ */
+final readonly class ScheduleGenerationService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -116,11 +121,7 @@ class ScheduleGenerationService
      */
     private function clearExistingAssignments(Schedule $schedule): void
     {
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->delete(ScheduleShiftAssignment::class, 'ssa')
-           ->where('ssa.schedule = :schedule')
-           ->setParameter('schedule', $schedule);
-        $qb->getQuery()->execute();
+        $this->scheduleRepository->clearShiftAssignments($schedule);
     }
 
     /**
@@ -128,27 +129,7 @@ class ScheduleGenerationService
      */
     private function getAvailableAgentsWithEfficiency(int $queueTypeId): array
     {
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('u', 'aqt.efficiencyScore')
-           ->from(User::class, 'u')
-           ->join(AgentQueueType::class, 'aqt', 'WITH', 'aqt.user = u')
-           ->where('aqt.queueType = :queueTypeId')
-           ->andWhere('u.role = :role')
-           ->setParameter('queueTypeId', $queueTypeId)
-           ->setParameter('role', UserRole::AGENT)
-           ->orderBy('aqt.efficiencyScore', 'DESC');
-
-        $results = $qb->getQuery()->getResult();
-        
-        $agents = [];
-        foreach ($results as $result) {
-            $agents[] = [
-                'user' => $result[0],
-                'efficiencyScore' => $result['efficiencyScore']
-            ];
-        }
-        
-        return $agents;
+        return $this->userRepository->findAgentsWithEfficiencyByQueueType($queueTypeId);
     }
 
     /**
@@ -392,17 +373,7 @@ class ScheduleGenerationService
         $startDate = new \DateTime($dayKey . ' 00:00:00');
         $endDate = new \DateTime($dayKey . ' 23:59:59');
         
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('aa.startDate, aa.endDate')
-           ->from('App\Entity\AgentAvailability', 'aa')
-           ->where('aa.agent = :agentId')
-           ->andWhere('aa.startDate <= :endDate')
-           ->andWhere('aa.endDate >= :startDate')
-           ->setParameter('agentId', $agentId)
-           ->setParameter('startDate', $startDate)
-           ->setParameter('endDate', $endDate);
-        
-        $results = $qb->getQuery()->getResult();
+        $results = $this->availabilityRepository->findAgentAvailabilityInDateRange($agentId, $startDate, $endDate);
         
         $totalHours = 0.0;
         foreach ($results as $result) {

@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Schedule;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use App\Entity\ScheduleShiftAssignment;
 
 /**
  * @extends ServiceEntityRepository<Schedule>
@@ -126,5 +127,31 @@ class ScheduleRepository extends ServiceEntityRepository
             ->setParameter('id', $id)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Delete all shift assignments for a specific schedule
+     */
+    public function deleteAssignmentsBySchedule(Schedule $schedule): void
+    {
+        $this->createQueryBuilder('s')
+            ->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
+            ->where('ssa.schedule = :schedule')
+            ->setParameter('schedule', $schedule)
+            ->getQuery()
+            ->execute();
+    }
+
+    /**
+     * Clear all shift assignments for a specific schedule
+     */
+    public function clearShiftAssignments(Schedule $schedule): void
+    {
+        $this->createQueryBuilder('s')
+            ->delete(ScheduleShiftAssignment::class, 'ssa')
+            ->where('ssa.schedule = :schedule')
+            ->setParameter('schedule', $schedule)
+            ->getQuery()
+            ->execute();
     }
 }

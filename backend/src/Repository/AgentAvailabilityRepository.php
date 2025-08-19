@@ -63,4 +63,41 @@ class AgentAvailabilityRepository extends ServiceEntityRepository
 
         return $query->getResult();
     }
+
+    /**
+     * Find overlapping availability periods for an agent
+     */
+    public function findOverlappingPeriods(User $agent, \DateTime $startDate, \DateTime $endDate, ?int $excludeId = null): array
+    {
+        $queryBuilder = $this->createQueryBuilder('a')
+            ->where('a.agent = :agent')
+            ->andWhere('(a.startDate <= :endDate AND a.endDate >= :startDate)')
+            ->setParameter('agent', $agent)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate);
+
+        if ($excludeId !== null) {
+            $queryBuilder->andWhere('a.id != :currentId')
+                ->setParameter('currentId', $excludeId);
+        }
+
+        return $queryBuilder->getQuery()->getResult();
+    }
+
+    /**
+     * Find agent availability in specific date range
+     */
+    public function findAgentAvailabilityInDateRange(int $agentId, \DateTime $startDate, \DateTime $endDate): array
+    {
+        return $this->createQueryBuilder('aa')
+            ->select('aa.startDate', 'aa.endDate')
+            ->where('aa.agent = :agentId')
+            ->andWhere('aa.startDate <= :endDate')
+            ->andWhere('aa.endDate >= :startDate')
+            ->setParameter('agentId', $agentId)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->getQuery()
+            ->getResult();
+    }
 } 

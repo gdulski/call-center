@@ -121,20 +121,7 @@ final readonly class AgentAvailabilityService
 
     private function hasOverlappingPeriods(User $agent, \DateTime $startDate, \DateTime $endDate, ?int $excludeId = null): bool
     {
-        $queryBuilder = $this->availabilityRepository->createQueryBuilder('a')
-            ->where('a.agent = :agent')
-            ->andWhere('(a.startDate <= :endDate AND a.endDate >= :startDate)')
-            ->setParameter('agent', $agent)
-            ->setParameter('startDate', $startDate)
-            ->setParameter('endDate', $endDate);
-
-        if ($excludeId !== null) {
-            $queryBuilder->andWhere('a.id != :currentId')
-                ->setParameter('currentId', $excludeId);
-        }
-
-        $overlapping = $queryBuilder->getQuery()->getResult();
-
+        $overlapping = $this->availabilityRepository->findOverlappingPeriods($agent, $startDate, $endDate, $excludeId);
         return !empty($overlapping);
     }
 

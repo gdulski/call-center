@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Schedule;
@@ -9,6 +11,8 @@ use App\Entity\CallQueueVolumePrediction;
 use App\Entity\AgentQueueType;
 use App\Repository\CallQueueVolumePredictionRepository;
 use App\Repository\AgentQueueTypeRepository;
+use App\Repository\UserRepository;
+use App\Repository\AgentAvailabilityRepository;
 use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -17,12 +21,14 @@ use Psr\Log\LoggerInterface;
  * Serwis do zaawansowanej optymalizacji ILP (Integer Linear Programming)
  * dla harmonogramu call center
  */
-class ILPOptimizationService
+final readonly class ILPOptimizationService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
         private CallQueueVolumePredictionRepository $predictionRepository,
         private AgentQueueTypeRepository $agentQueueTypeRepository,
+        private UserRepository $userRepository,
+        private AgentAvailabilityRepository $availabilityRepository,
         private LoggerInterface $logger
     ) {}
 
@@ -316,29 +322,11 @@ class ILPOptimizationService
     }
 
     /**
-     * Pobiera dostępnych agentów z ich efektywnością
+     * Pobiera dostępnych agentów z ich efektywnością dla danej kolejki
      */
     private function getAvailableAgentsWithEfficiency(int $queueTypeId): array
     {
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('u', 'aqt.efficiencyScore')
-           ->from(User::class, 'u')
-           ->join(AgentQueueType::class, 'aqt', 'WITH', 'aqt.user = u')
-           ->where('aqt.queueType = :queueTypeId')
-           ->andWhere('u.role = :role')
-           ->setParameter('queueTypeId', $queueTypeId)
-           ->setParameter('role', UserRole::AGENT)
-           ->orderBy('aqt.efficiencyScore', 'DESC');
-
-        $results = $qb->getQuery()->getResult();
-        
-        $agents = [];
-        foreach ($results as $result) {
-            $agents[] = [
-                'user' => $result[0],
-                'efficiencyScore' => $result['efficiencyScore']
-            ];
-        }
+        $agents = $this->userRepository->findAgentsWithEfficiencyByQueueType($queueTypeId);
         
         // Dodaj logowanie dla diagnostyki
         if (empty($agents)) {
@@ -368,17 +356,7 @@ class ILPOptimizationService
         $startDate = \DateTime::createFromFormat('Y-m-d', $dayKey)->setTime(0, 0, 0);
         $endDate = (clone $startDate)->setTime(23, 59, 59);
         
-        $qb = $this->entityManager->createQueryBuilder();
-        $qb->select('aa.startDate, aa.endDate')
-           ->from('App\Entity\AgentAvailability', 'aa')
-           ->where('aa.agent = :agentId')
-           ->andWhere('aa.startDate <= :endDate')
-           ->andWhere('aa.endDate >= :startDate')
-           ->setParameter('agentId', $agentId)
-           ->setParameter('startDate', $startDate)
-           ->setParameter('endDate', $endDate);
-        
-        $results = $qb->getQuery()->getResult();
+        $results = $this->availabilityRepository->findAgentAvailabilityInDateRange($agentId, $startDate, $endDate);
         
         $totalHours = 0.0;
         foreach ($results as $result) {

@@ -157,11 +157,7 @@ final readonly class ScheduleService
             }
 
             // Remove existing assignments
-            $qb = $this->entityManager->createQueryBuilder();
-            $qb->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
-                ->where('ssa.schedule = :schedule')
-                ->setParameter('schedule', $schedule);
-            $qb->getQuery()->execute();
+            $this->scheduleRepository->deleteAssignmentsBySchedule($schedule);
             
             // Perform ILP optimization
             $optimizedAssignments = $this->ilpOptimizationService->optimizeScheduleILP($schedule);
@@ -290,11 +286,7 @@ final readonly class ScheduleService
     {
         if ($optimizationType === 'ilp') {
             // Remove existing assignments before ILP optimization
-            $qb = $this->entityManager->createQueryBuilder();
-            $qb->delete('App\Entity\ScheduleShiftAssignment', 'ssa')
-                ->where('ssa.schedule = :schedule')
-                ->setParameter('schedule', $schedule);
-            $qb->getQuery()->execute();
+            $this->scheduleRepository->deleteAssignmentsBySchedule($schedule);
 
             // Perform ILP optimization
             $optimizedAssignments = $this->ilpOptimizationService->optimizeScheduleILP($schedule);

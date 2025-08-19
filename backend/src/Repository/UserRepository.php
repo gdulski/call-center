@@ -70,4 +70,45 @@ class UserRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Find agents by IDs with specific role
+     */
+    public function findAgentsByIds(array $agentIds): array
+    {
+        return $this->createQueryBuilder('u')
+            ->where('u.id IN (:agentIds)')
+            ->andWhere('u.role = :role')
+            ->setParameter('agentIds', $agentIds)
+            ->setParameter('role', UserRole::AGENT)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find agents with efficiency scores for a specific queue type
+     */
+    public function findAgentsWithEfficiencyByQueueType(int $queueTypeId): array
+    {
+        $results = $this->createQueryBuilder('u')
+            ->select('u', 'aqt.efficiencyScore')
+            ->join('App\Entity\AgentQueueType', 'aqt', 'WITH', 'aqt.user = u')
+            ->where('aqt.queueType = :queueTypeId')
+            ->andWhere('u.role = :role')
+            ->setParameter('queueTypeId', $queueTypeId)
+            ->setParameter('role', UserRole::AGENT)
+            ->orderBy('aqt.efficiencyScore', 'DESC')
+            ->getQuery()
+            ->getResult();
+        
+        $agents = [];
+        foreach ($results as $result) {
+            $agents[] = [
+                'user' => $result[0],
+                'efficiencyScore' => $result['efficiencyScore']
+            ];
+        }
+        
+        return $agents;
+    }
 } 
