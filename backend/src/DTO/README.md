@@ -16,6 +16,7 @@ DTO związane z harmonogramami:
 - `ScheduleStatusUpdateResponse.php` - odpowiedź po aktualizacji statusu
 - `ScheduleValidationData.php` - dane walidacji harmonogramu
 - `ScheduleHeuristicOptimizationResponse.php` - odpowiedź po optymalizacji heurystycznej
+- `ScheduleAssignmentInfo.php` - informacje o przypisaniu do harmonogramu
 - `CreateScheduleRequest.php` - żądanie utworzenia harmonogramu
 - `UpdateScheduleStatusRequest.php` - żądanie aktualizacji statusu
 
@@ -26,6 +27,10 @@ DTO związane z agentami:
 - `AgentReassignmentRequest.php` - żądanie ponownego przypisania agenta
 - `CreateAgentAvailabilityRequest.php` - żądanie utworzenia dostępności agenta
 - `UpdateAgentAvailabilityRequest.php` - żądanie aktualizacji dostępności agenta
+- `AgentInfo.php` - podstawowe informacje o agencie
+- `AgentReassignmentChange.php` - informacje o zmianie przypisania agenta
+- `UnresolvedConflict.php` - informacje o nierozwiązanym konflikcie
+- `AgentReplacementInfo.php` - informacje o zastępcy agenta
 
 ### User/
 DTO związane z użytkownikami:
@@ -37,10 +42,26 @@ DTO związane z użytkownikami:
 DTO związane z typami kolejek:
 - `CreateQueueTypeRequest.php` - żądanie utworzenia typu kolejki
 - `UpdateQueueTypeRequest.php` - żądanie aktualizacji typu kolejki
+- `QueueTypeInfo.php` - podstawowe informacje o typie kolejki
 
 ## Zasady organizacji
 
 - Każda domena biznesowa ma swój katalog
+- Każda klasa DTO ma swój własny plik
 - DTO są pogrupowane według funkcjonalności
 - Nazwy plików są opisowe i wskazują na ich przeznaczenie
 - Wszystkie klasy są final i readonly zgodnie z zasadami Symfony
+- Używane są normalne importy `use` zamiast inline importów
+
+## Przykład użycia
+
+```php
+use App\DTO\Schedule\ScheduleCreationResponse;
+use App\DTO\QueueType\QueueTypeInfo;
+
+// Zamiast inline importu:
+// new \App\DTO\QueueTypeInfo(...)
+
+// Używamy normalnego importu:
+new QueueTypeInfo(...)
+```

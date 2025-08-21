@@ -10,8 +10,12 @@ use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Repository\ScheduleShiftAssignmentRepository;
 use App\Repository\AgentQueueTypeRepository;
-use App\DTO\AgentReassignmentResponse;
-use App\DTO\AgentReassignmentPreviewResponse;
+use App\DTO\Agent\AgentReassignmentResponse;
+use App\DTO\Agent\AgentReassignmentPreviewResponse;
+use App\DTO\Agent\AgentReassignmentChange;
+use App\DTO\Agent\AgentInfo;
+use App\DTO\Agent\UnresolvedConflict;
+use App\DTO\Agent\AgentReplacementInfo;
 use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -58,13 +62,13 @@ final readonly class AgentReassignmentService
                     $oldAgent = $assignment->getUser();
                     $this->reassignAssignment($assignment, $replacementAgent);
                     
-                    $changes[] = new \App\DTO\AgentReassignmentChange(
+                    $changes[] = new AgentReassignmentChange(
                         assignmentId: $assignment->getId(),
-                        oldAgent: new \App\DTO\AgentInfo(
+                        oldAgent: new AgentInfo(
                             id: $oldAgent->getId(),
                             name: $oldAgent->getName()
                         ),
-                        newAgent: new \App\DTO\AgentInfo(
+                        newAgent: new AgentInfo(
                             id: $replacementAgent->getId(),
                             name: $replacementAgent->getName()
                         ),
@@ -73,7 +77,7 @@ final readonly class AgentReassignmentService
                         duration: $assignment->getDurationInHours()
                     );
                 } else {
-                    $unresolvedConflicts[] = new \App\DTO\UnresolvedConflict(
+                    $unresolvedConflicts[] = new UnresolvedConflict(
                         assignmentId: $assignment->getId(),
                         date: $assignment->getStartTime()->format('Y-m-d'),
                         time: $assignment->getStartTime()->format('H:i') . '-' . $assignment->getEndTime()->format('H:i'),
@@ -129,11 +133,11 @@ final readonly class AgentReassignmentService
             
             $preview[] = new AgentReassignmentPreviewResponse(
                 assignmentId: $assignment->getId(),
-                currentAgent: new \App\DTO\AgentInfo(
+                currentAgent: new AgentInfo(
                     id: $assignment->getUser()->getId(),
                     name: $assignment->getUser()->getName()
                 ),
-                suggestedReplacement: $replacementAgent ? new \App\DTO\AgentReplacementInfo(
+                suggestedReplacement: $replacementAgent ? new AgentReplacementInfo(
                     id: $replacementAgent->getId(),
                     name: $replacementAgent->getName(),
                     efficiencyScore: $this->getAgentEfficiencyScore($replacementAgent, $schedule)

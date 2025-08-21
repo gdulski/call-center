@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\DTO\Agent;
 
+use App\DTO\Agent\AgentReassignmentChange;
+use App\DTO\Agent\AgentInfo;
+use App\DTO\Agent\UnresolvedConflict;
+
 final readonly class AgentReassignmentResponse
 {
     public function __construct(
@@ -34,92 +38,6 @@ final readonly class AgentReassignmentResponse
     }
 }
 
-final readonly class AgentReassignmentChange
-{
-    public function __construct(
-        public int $assignmentId,
-        public AgentInfo $oldAgent,
-        public AgentInfo $newAgent,
-        public string $date,
-        public string $time,
-        public float $duration
-    ) {}
 
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            assignmentId: $data['assignmentId'],
-            oldAgent: AgentInfo::fromArray($data['oldAgent']),
-            newAgent: AgentInfo::fromArray($data['newAgent']),
-            date: $data['date'],
-            time: $data['time'],
-            duration: $data['duration']
-        );
-    }
 
-    public function toArray(): array
-    {
-        return [
-            'assignmentId' => $this->assignmentId,
-            'oldAgent' => $this->oldAgent->toArray(),
-            'newAgent' => $this->newAgent->toArray(),
-            'date' => $this->date,
-            'time' => $this->time,
-            'duration' => $this->duration
-        ];
-    }
-}
 
-final readonly class AgentInfo
-{
-    public function __construct(
-        public int $id,
-        public string $name
-    ) {}
-
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            id: $data['id'],
-            name: $data['name']
-        );
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name
-        ];
-    }
-}
-
-final readonly class UnresolvedConflict
-{
-    public function __construct(
-        public int $assignmentId,
-        public string $date,
-        public string $time,
-        public string $reason
-    ) {}
-
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            assignmentId: $data['assignmentId'],
-            date: $data['date'],
-            time: $data['time'],
-            reason: $data['reason']
-        );
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'assignmentId' => $this->assignmentId,
-            'date' => $this->date,
-            'time' => $this->time,
-            'reason' => $this->reason
-        ];
-    }
-}

@@ -17,9 +17,12 @@ use App\DTO\Schedule\ScheduleDetailsResponse;
 use App\DTO\Schedule\ScheduleOptimizationResponse;
 use App\DTO\Schedule\ScheduleMetricsResponse;
 use App\DTO\Schedule\ScheduleStatusUpdateResponse;
+use App\DTO\Schedule\ScheduleGenerationResponse;
+use App\DTO\Schedule\ScheduleAssignmentInfo;
+use App\DTO\QueueType\QueueTypeInfo;
+use App\DTO\Agent\AgentReassignmentPreviewResponse;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use App\DTO\Schedule\ScheduleGenerationResponse;
 
 final readonly class ScheduleService
 {
@@ -92,7 +95,7 @@ final readonly class ScheduleService
         foreach ($schedules as $schedule) {
             $data[] = new ScheduleListItemResponse(
                 id: $schedule->getId(),
-                queueType: new \App\DTO\QueueTypeInfo(
+                queueType: new QueueTypeInfo(
                     id: $schedule->getQueueType()->getId(),
                     name: $schedule->getQueueType()->getName()
                 ),
@@ -112,7 +115,7 @@ final readonly class ScheduleService
     {
         $assignments = [];
         foreach ($schedule->getShiftAssignments() as $assignment) {
-            $assignments[] = new \App\DTO\ScheduleAssignmentInfo(
+                            $assignments[] = new ScheduleAssignmentInfo(
                 id: $assignment->getId(),
                 agentId: $assignment->getUser()->getId(),
                 agentName: $assignment->getUser()->getName(),
@@ -124,7 +127,7 @@ final readonly class ScheduleService
         
         return new ScheduleDetailsResponse(
             id: $schedule->getId(),
-            queueType: new \App\DTO\QueueTypeInfo(
+                            queueType: new QueueTypeInfo(
                 id: $schedule->getQueueType()->getId(),
                 name: $schedule->getQueueType()->getName()
             ),
@@ -266,7 +269,7 @@ final readonly class ScheduleService
                 $newAvailability
             );
             
-            return array_map(fn(\App\DTO\AgentReassignmentPreviewResponse $item) => $item->toArray(), $preview);
+            return array_map(fn(AgentReassignmentPreviewResponse $item) => $item->toArray(), $preview);
         } catch (\Exception $e) {
             throw new ScheduleValidationException(['Failed to generate reassignment preview: ' . $e->getMessage()]);
         }

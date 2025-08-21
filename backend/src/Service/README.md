@@ -34,6 +34,7 @@ Serwisy związane z typami kolejek:
 - Nazwy plików są opisowe i wskazują na ich przeznaczenie
 - Wszystkie klasy są final zgodnie z zasadami Symfony
 - Serwisy implementują logikę biznesową i są wstrzykiwane do kontrolerów
+- Używane są normalne importy `use` zamiast inline importów
 
 ## Wzorce projektowe
 
@@ -41,3 +42,17 @@ Serwisy związane z typami kolejek:
 - **Repository Pattern** - dostęp do danych przez repozytoria
 - **Dependency Injection** - serwisy są wstrzykiwane przez konstruktor
 - **Single Responsibility Principle** - każdy serwis ma jedną odpowiedzialność
+
+## Przykład importów
+
+```php
+// Zamiast inline importów:
+// new \App\DTO\Schedule\ScheduleCreationResponse(...)
+
+// Używamy normalnych importów:
+use App\DTO\Schedule\ScheduleCreationResponse;
+use App\DTO\QueueType\QueueTypeInfo;
+
+new ScheduleCreationResponse(...);
+new QueueTypeInfo(...);
+```
