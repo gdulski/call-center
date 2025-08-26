@@ -61,7 +61,16 @@ class ScheduleService {
         }
 
         const responseData = await response.json();
-        return responseData.data || responseData;
+        
+        // Sprawdź czy odpowiedź ma poprawną strukturę
+        if (responseData.success && responseData.data) {
+            return responseData.data;
+        } else if (responseData.metrics || responseData.validation) {
+            // Fallback dla starej struktury
+            return responseData;
+        } else {
+            throw new Error('Nieprawidłowa struktura odpowiedzi z API');
+        }
     }
 
     async create(scheduleData) {

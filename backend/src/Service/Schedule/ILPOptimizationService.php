@@ -381,7 +381,7 @@ final readonly class ILPOptimizationService
     }
 
     /**
-     * Oblicza metryki harmonogramu
+     * Oblicza metryki harmonogramu z uwzględnieniem pokrycia rozmów
      */
     public function calculateScheduleMetrics(Schedule $schedule): ScheduleMetricsData
     {
@@ -389,12 +389,31 @@ final readonly class ILPOptimizationService
         
         $totalHours = 0;
         $agentHours = [];
-        $hourlyCoverage = [];
+        $callCoverage = [];
         
+        // Pobierz predykcje rozmów dla tego harmonogramu
+        $predictions = $this->predictionRepository->findByQueueTypeAndDateRange(
+            $schedule->getQueueType()->getId(),
+            $schedule->getWeekStartDate(),
+            $schedule->getWeekEndDate()
+        );
+        
+        // Grupuj predykcje według dni
+        $dailyPredictions = [];
+        foreach ($predictions as $prediction) {
+            $dayKey = $prediction->getHour()->format('Y-m-d');
+            if (!isset($dailyPredictions[$dayKey])) {
+                $dailyPredictions[$dayKey] = 0;
+            }
+            $dailyPredictions[$dayKey] += $prediction->getExpectedCalls();
+        }
+        
+        // Oblicz pojemność agentów na dzień
+        $dailyAgentCapacity = [];
         foreach ($assignments as $assignment) {
             $agentId = $assignment->getUser()->getId();
             $hours = $assignment->getDurationInHours();
-            $startHour = $assignment->getStartTime()->format('Y-m-d H:i');
+            $dayKey = $assignment->getStartTime()->format('Y-m-d');
             
             $totalHours += $hours;
             
@@ -403,10 +422,25 @@ final readonly class ILPOptimizationService
             }
             $agentHours[$agentId] += $hours;
             
-            if (!isset($hourlyCoverage[$startHour])) {
-                $hourlyCoverage[$startHour] = 0;
+            // Oblicz pojemność agenta na ten dzień (zakładając średnio 10 rozmów na godzinę)
+            if (!isset($dailyAgentCapacity[$dayKey])) {
+                $dailyAgentCapacity[$dayKey] = 0;
             }
-            $hourlyCoverage[$startHour] += $hours;
+            $dailyAgentCapacity[$dayKey] += (int)($hours * 10);
+        }
+        
+        // Oblicz pokrycie rozmów dla każdego dnia
+        foreach ($dailyPredictions as $day => $expectedCalls) {
+            $agentCapacity = $dailyAgentCapacity[$day] ?? 0;
+            // Pokrycie = (pojemność agentów / oczekiwane rozmowy) * 100
+            // >100% = nadmiar agentów (dobrze), <100% = za mało agentów (problem)
+            $coveragePercentage = $expectedCalls > 0 ? round(($agentCapacity / $expectedCalls) * 100, 1) : 0;
+            
+            $callCoverage[$day] = [
+                'expectedCalls' => $expectedCalls,
+                'agentCapacity' => $agentCapacity,
+                'coverage' => $coveragePercentage
+            ];
         }
         
         return new ScheduleMetricsData(
@@ -415,7 +449,7 @@ final readonly class ILPOptimizationService
             averageHoursPerAgent: count($agentHours) > 0 ? $totalHours / count($agentHours) : 0,
             maxHoursPerAgent: count($agentHours) > 0 ? max($agentHours) : 0,
             minHoursPerAgent: count($agentHours) > 0 ? min($agentHours) : 0,
-            hourlyCoverage: $hourlyCoverage
+            callCoverage: $callCoverage
         );
     }
 

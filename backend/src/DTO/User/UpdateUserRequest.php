@@ -17,11 +17,7 @@ final readonly class UpdateUserRequest
         public string $role,
         
         #[Assert\All([
-            new Assert\Type('array'),
-            new Assert\Collection([
-                'id' => [new Assert\NotBlank(), new Assert\Type('integer')],
-                'efficiencyScore' => [new Assert\Type('float'), new Assert\Range(min: 0.0, max: 100.0)]
-            ])
+            new Assert\Type(['integer', 'array'], message: 'Queue type ID must be an integer or object with id and efficiencyScore')
         ])]
         public ?array $queueTypeIds = null
     ) {}

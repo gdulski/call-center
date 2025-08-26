@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\User;
 
-use App\DTO\CreateUserRequest;
-use App\DTO\UpdateUserRequest;
+use App\DTO\User\CreateUserRequest;
+use App\DTO\User\UpdateUserRequest;
 use App\Entity\User;
 use App\Exception\UserValidationException;
 use App\Enum\UserRole;

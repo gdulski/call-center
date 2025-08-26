@@ -11,7 +11,7 @@ use App\Enum\UserRole;
 use App\Exception\UserValidationException;
 use App\Repository\UserRepository;
 use App\Repository\QueueTypeRepository;
-use App\DTO\UserRoleResponse;
+use App\DTO\User\UserRoleResponse;
 use Doctrine\ORM\EntityManagerInterface;
 
 final readonly class UserService

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Agent;
 
-use App\DTO\CreateAgentAvailabilityRequest;
-use App\DTO\UpdateAgentAvailabilityRequest;
+use App\DTO\Agent\CreateAgentAvailabilityRequest;
+use App\DTO\Agent\UpdateAgentAvailabilityRequest;
 use App\Exception\AgentAvailabilityValidationException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 

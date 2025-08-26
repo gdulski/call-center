@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: AgentQueueTypeRepository::class)]
-final class AgentQueueType
+class AgentQueueType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\QueueType;
 
-use App\DTO\CreateQueueTypeRequest;
-use App\DTO\UpdateQueueTypeRequest;
+use App\DTO\QueueType\CreateQueueTypeRequest;
+use App\DTO\QueueType\UpdateQueueTypeRequest;
 use App\Entity\QueueType;
 use App\Exception\QueueTypeValidationException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;

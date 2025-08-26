@@ -950,6 +950,257 @@
   color: #666;
 }
 
+/* Coverage Summary */
+.coverage-summary {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.coverage-summary h5 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 16px;
+}
+
+.summary-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.summary-label {
+  font-weight: 500;
+  color: #666;
+  font-size: 14px;
+}
+
+.summary-value {
+  font-weight: 600;
+  font-size: 16px;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.summary-value.good {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.summary-value.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.summary-value.poor {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.summary-value.critical {
+  background-color: #f5c6cb;
+  color: #721c24;
+}
+
+.summary-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.breakdown-item.good {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.breakdown-item.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.breakdown-item.poor {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.breakdown-item.critical {
+  background-color: #f5c6cb;
+  color: #721c24;
+}
+
+.breakdown-count {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.breakdown-label {
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Call Coverage Description */
+.call-coverage-description {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f0f8ff;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.description-text {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.coverage-legend {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+}
+
+.coverage-legend li {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.legend-item {
+  display: inline-block;
+  width: 60px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+  margin-right: 8px;
+}
+
+.legend-item.good {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.legend-item.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.legend-item.poor {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.legend-item.critical {
+  background-color: #f5c6cb;
+  color: #721c24;
+}
+
+/* Enhanced Call Coverage Items */
+.coverage-item.good {
+  background-color: #f8fff8;
+  border-left: 3px solid #28a745;
+}
+
+.coverage-item.warning {
+  background-color: #fffbf0;
+  border-left: 3px solid #ffc107;
+}
+
+.coverage-item.poor {
+  background-color: #fff5f5;
+  border-left: 3px solid #dc3545;
+}
+
+.coverage-item.critical {
+  background-color: #fff0f0;
+  border-left: 3px solid #dc3545;
+}
+
+.coverage-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.coverage-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.coverage-main .expected {
+  color: #007bff;
+  font-weight: 500;
+}
+
+.coverage-main .separator {
+  color: #999;
+  font-weight: 300;
+}
+
+.coverage-main .capacity {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.coverage-percentage {
+  text-align: right;
+}
+
+.percentage {
+  font-weight: 600;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.percentage.good {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.percentage.warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.percentage.poor {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.percentage.critical {
+  background-color: #f5c6cb;
+  color: #721c24;
+}
+
 /* Validation Tab */
 .validation-status {
   background-color: #f8f9fa;

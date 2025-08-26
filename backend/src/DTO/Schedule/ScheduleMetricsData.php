@@ -12,7 +12,7 @@ final readonly class ScheduleMetricsData
         public float $averageHoursPerAgent,
         public float $maxHoursPerAgent,
         public float $minHoursPerAgent,
-        public array $hourlyCoverage
+        public array $callCoverage
     ) {}
 
     public static function fromArray(array $data): self
@@ -23,7 +23,7 @@ final readonly class ScheduleMetricsData
             averageHoursPerAgent: $data['averageHoursPerAgent'],
             maxHoursPerAgent: $data['maxHoursPerAgent'],
             minHoursPerAgent: $data['minHoursPerAgent'],
-            hourlyCoverage: $data['hourlyCoverage']
+            callCoverage: $data['callCoverage']
         );
     }
 
@@ -35,7 +35,7 @@ final readonly class ScheduleMetricsData
             'averageHoursPerAgent' => $this->averageHoursPerAgent,
             'maxHoursPerAgent' => $this->maxHoursPerAgent,
             'minHoursPerAgent' => $this->minHoursPerAgent,
-            'hourlyCoverage' => $this->hourlyCoverage
+            'callCoverage' => $this->callCoverage
         ];
     }
 }

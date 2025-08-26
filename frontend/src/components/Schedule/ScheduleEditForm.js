@@ -80,6 +80,42 @@ const ScheduleEditForm = ({ schedule, onClose, onUpdate }) => {
     return `${wholeHours}h ${minutes > 0 ? `${minutes}min` : ''}`.trim();
   };
 
+  // Funkcja pomocnicza do bezpiecznego dostępu do metryk
+  const getMetricsValue = (path, defaultValue = 0) => {
+    if (!metrics || !metrics.metrics) return defaultValue;
+    
+    const keys = path.split('.');
+    let value = metrics.metrics;
+    
+    for (const key of keys) {
+      if (value && typeof value === 'object' && key in value) {
+        value = value[key];
+      } else {
+        return defaultValue;
+      }
+    }
+    
+    return value !== undefined && value !== null ? value : defaultValue;
+  };
+
+  // Funkcja pomocnicza do bezpiecznego dostępu do walidacji
+  const getValidationValue = (path, defaultValue = null) => {
+    if (!metrics || !metrics.validation) return defaultValue;
+    
+    const keys = path.split('.');
+    let value = metrics.validation;
+    
+    for (const key of keys) {
+      if (value && typeof value === 'object' && key in value) {
+        value = value[key];
+      } else {
+        return defaultValue;
+      }
+    }
+    
+    return value !== undefined && value !== null ? value : defaultValue;
+  };
+
   const getStatusText = (status) => {
     const statusMap = {
       'draft': 'Szkic',
@@ -653,43 +689,129 @@ const ScheduleEditForm = ({ schedule, onClose, onUpdate }) => {
         {activeTab === 'metrics' && metrics && (
           <div className="metrics-tab">
             <h4>Metryki harmonogramu</h4>
+            
+            {/* Podsumowanie pokrycia rozmów */}
+            {getMetricsValue('callCoverage') && (
+              <div className="coverage-summary">
+                <h5>Podsumowanie pokrycia rozmów</h5>
+                <div className="summary-stats">
+                  {(() => {
+                    const coverageData = getMetricsValue('callCoverage', {});
+                    const days = Object.values(coverageData);
+                    const totalDays = days.length;
+                    // Nowa logika: >100% = nadmiar agentów (dobrze), <100% = za mało agentów (problem)
+                    const goodDays = days.filter(d => d.coverage >= 100).length;
+                    const warningDays = days.filter(d => d.coverage >= 80 && d.coverage < 100).length;
+                    const poorDays = days.filter(d => d.coverage >= 60 && d.coverage < 80).length;
+                    const criticalDays = days.filter(d => d.coverage < 60).length;
+                    const avgCoverage = days.reduce((sum, d) => sum + d.coverage, 0) / totalDays;
+                    
+                    return (
+                      <>
+                        <div className="summary-item">
+                          <span className="summary-label">Średnie pokrycie:</span>
+                          <span className={`summary-value ${avgCoverage >= 100 ? 'good' : avgCoverage >= 80 ? 'warning' : avgCoverage >= 60 ? 'poor' : 'critical'}`}>
+                            {avgCoverage.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="summary-breakdown">
+                          <div className="breakdown-item good">
+                            <span className="breakdown-count">{goodDays}</span>
+                            <span className="breakdown-label">Wystarczające</span>
+                          </div>
+                          <div className="breakdown-item warning">
+                            <span className="breakdown-count">{warningDays}</span>
+                            <span className="breakdown-label">Lekki niedobór</span>
+                          </div>
+                          <div className="breakdown-item poor">
+                            <span className="breakdown-count">{poorDays}</span>
+                            <span className="breakdown-label">Znaczny niedobór</span>
+                          </div>
+                          <div className="breakdown-item critical">
+                            <span className="breakdown-count">{criticalDays}</span>
+                            <span className="breakdown-label">Duży problem</span>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+            
             <div className="metrics-grid">
               <div className="metric-card">
                 <h5>Podstawowe metryki</h5>
                 <div className="metric-item">
                   <label>Łączne godziny:</label>
-                  <span>{metrics.metrics.totalHours} h</span>
+                  <span>{getMetricsValue('totalHours', 0)} h</span>
                 </div>
                 <div className="metric-item">
                   <label>Liczba agentów:</label>
-                  <span>{metrics.metrics.agentCount}</span>
+                  <span>{getMetricsValue('agentCount', 0)}</span>
                 </div>
                 <div className="metric-item">
                   <label>Średnie godziny na agenta:</label>
-                  <span>{metrics.metrics.averageHoursPerAgent.toFixed(2)} h</span>
+                  <span>{getMetricsValue('averageHoursPerAgent', 0).toFixed(2)} h</span>
                 </div>
                 <div className="metric-item">
                   <label>Maksymalne godziny na agenta:</label>
-                  <span>{metrics.metrics.maxHoursPerAgent} h</span>
+                  <span>{getMetricsValue('maxHoursPerAgent', 0)} h</span>
                 </div>
                 <div className="metric-item">
                   <label>Minimalne godziny na agenta:</label>
-                  <span>{metrics.metrics.minHoursPerAgent} h</span>
+                  <span>{getMetricsValue('minHoursPerAgent', 0)} h</span>
                 </div>
               </div>
 
               <div className="metric-card">
-                <h5>Pokrycie godzinowe</h5>
-                <div className="hourly-coverage">
-                  {Object.entries(metrics.metrics.hourlyCoverage).slice(0, 10).map(([hour, coverage]) => (
-                    <div key={hour} className="coverage-item">
-                      <span className="hour">{formatDate(hour)}</span>
-                      <span className="coverage">{coverage} h</span>
-                    </div>
-                  ))}
-                  {Object.keys(metrics.metrics.hourlyCoverage).length > 10 && (
+                <h5>Pokrycie rozmów dzienne</h5>
+                <div className="call-coverage-description">
+                  <p className="description-text">
+                    <strong>Format:</strong> Oczekiwane rozmowy / Pojemność agentów (Procent pokrycia)
+                  </p>
+                  <p className="description-text">
+                    <strong>Interpretacja:</strong>
+                  </p>
+                  <ul className="coverage-legend">
+                    <li><span className="legend-item good">≥ 100%</span> - Wystarczające pokrycie (nadmiar agentów)</li>
+                    <li><span className="legend-item warning">80-99%</span> - Prawie wystarczające (lekki niedobór)</li>
+                    <li><span className="legend-item poor">60-79%</span> - Niewystarczające (znaczny niedobór)</li>
+                    <li><span className="legend-item critical">&lt; 60%</span> - Krytycznie niewystarczające (duży problem)</li>
+                  </ul>
+                </div>
+                <div className="call-coverage">
+                  {getMetricsValue('callCoverage') && Object.entries(getMetricsValue('callCoverage', {})).slice(0, 10).map(([day, coverage]) => {
+                    // Nowa logika: >100% = nadmiar agentów (dobrze), <100% = za mało agentów (problem)
+                    const statusClass = coverage.coverage >= 100 ? 'good' : 
+                                      coverage.coverage >= 80 ? 'warning' : 
+                                      coverage.coverage >= 60 ? 'poor' : 'critical';
+                    return (
+                      <div key={day} className={`coverage-item ${statusClass}`}>
+                        <span className="day">{day}</span>
+                        <div className="coverage-details">
+                          <div className="coverage-main">
+                            <span className="expected">Oczekiwane: {coverage.expectedCalls}</span>
+                            <span className="separator">/</span>
+                            <span className="capacity">Pojemność: {coverage.agentCapacity}</span>
+                          </div>
+                          <div className="coverage-percentage">
+                            <span className={`percentage ${statusClass}`}>
+                              {coverage.coverage}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {getMetricsValue('callCoverage') && Object.keys(getMetricsValue('callCoverage', {})).length > 10 && (
                     <div className="coverage-more">
-                      <small>... i {Object.keys(metrics.metrics.hourlyCoverage).length - 10} więcej</small>
+                      <small>... i {Object.keys(getMetricsValue('callCoverage', {})).length - 10} więcej</small>
+                    </div>
+                  )}
+                  {!getMetricsValue('callCoverage') && (
+                    <div className="no-data">
+                      <small>Brak danych o pokryciu rozmów</small>
                     </div>
                   )}
                 </div>
@@ -702,15 +824,15 @@ const ScheduleEditForm = ({ schedule, onClose, onUpdate }) => {
           <div className="validation-tab">
             <h4>Walidacja harmonogramu</h4>
             <div className="validation-status">
-              <div className={`validation-indicator ${metrics.validation.isValid ? 'valid' : 'invalid'}`}>
-                {metrics.validation.isValid ? '✓ Harmonogram jest poprawny' : '✗ Harmonogram zawiera błędy'}
+              <div className={`validation-indicator ${getValidationValue('isValid', false) ? 'valid' : 'invalid'}`}>
+                {getValidationValue('isValid', false) ? '✓ Harmonogram jest poprawny' : '✗ Harmonogram zawiera błędy'}
               </div>
               
-              {metrics.validation.totalViolations > 0 && (
+              {getValidationValue('totalViolations', 0) > 0 && (
                 <div className="violations-list">
-                  <h5>Wykryte problemy ({metrics.validation.totalViolations}):</h5>
+                  <h5>Wykryte problemy ({getValidationValue('totalViolations', 0)}):</h5>
                   <ul>
-                    {metrics.validation.violations.map((violation, index) => (
+                    {getValidationValue('violations', []) && getValidationValue('violations', []).map((violation, index) => (
                       <li key={index} className="violation-item">
                         {violation}
                       </li>
@@ -719,7 +841,7 @@ const ScheduleEditForm = ({ schedule, onClose, onUpdate }) => {
                 </div>
               )}
               
-              {metrics.validation.isValid && (
+              {getValidationValue('isValid', false) && (
                 <div className="validation-success">
                   <p>✓ Wszystkie ograniczenia są spełnione</p>
                   <p>✓ Brak nakładających się przypisań</p>

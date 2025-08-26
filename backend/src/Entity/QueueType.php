@@ -11,7 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: QueueTypeRepository::class)]
-final class QueueType
+class QueueType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

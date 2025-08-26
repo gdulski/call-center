@@ -119,20 +119,26 @@ function exampleAnalyzeScheduleMetrics()
         echo "  - Maksymalne godziny na agenta: " . $metrics['maxHoursPerAgent'] . "\n";
         echo "  - Minimalne godziny na agenta: " . $metrics['minHoursPerAgent'] . "\n";
         
-        echo "\n=== Pokrycie godzinowe ===\n";
-        $hourlyCoverage = $metrics['hourlyCoverage'];
-        $totalHours = count($hourlyCoverage);
-        $coveredHours = count(array_filter($hourlyCoverage, fn($hours) => $hours > 0));
+        echo "\n=== Pokrycie rozmów ===\n";
+        $callCoverage = $metrics['callCoverage'];
+        $totalDays = count($callCoverage);
+        $coveredDays = count(array_filter($callCoverage, fn($coverage) => $coverage['coverage'] > 0));
         
-        echo "  - Godziny z pokryciem: $coveredHours/$totalHours (" . round(($coveredHours/$totalHours)*100, 1) . "%)\n";
+        echo "  - Dni z pokryciem: $coveredDays/$totalDays (" . round(($coveredDays/$totalDays)*100, 1) . "%)\n";
         
-        // Znajdź godziny szczytu
-        $peakHours = array_filter($hourlyCoverage, fn($hours) => $hours > 15);
-        echo "  - Godziny szczytu (>15h): " . count($peakHours) . "\n";
+        // Analiza pokrycia rozmów
+        foreach ($callCoverage as $day => $coverage) {
+            $formatted = "{$coverage['expectedCalls']}/{$coverage['agentCapacity']} ({$coverage['coverage']}%)";
+            echo "  - $day: $formatted\n";
+        }
         
-        // Znajdź godziny z brakiem pokrycia
-        $uncoveredHours = array_filter($hourlyCoverage, fn($hours) => $hours == 0);
-        echo "  - Godziny bez pokrycia: " . count($uncoveredHours) . "\n";
+        // Znajdź dni z nadmiernym obciążeniem (>100%)
+        $overloadedDays = array_filter($callCoverage, fn($coverage) => $coverage['coverage'] > 100);
+        echo "  - Dni z nadmiernym obciążeniem (>100%): " . count($overloadedDays) . "\n";
+        
+        // Znajdź dni z brakiem pokrycia
+        $uncoveredDays = array_filter($callCoverage, fn($coverage) => $coverage['coverage'] == 0);
+        echo "  - Dni bez pokrycia: " . count($uncoveredDays) . "\n";
         
         echo "\n=== Walidacja ===\n";
         echo "  - Status: " . ($validation['isValid'] ? '✓ Poprawny' : '✗ Błędy') . "\n";
@@ -148,12 +154,12 @@ function exampleAnalyzeScheduleMetrics()
         
         // Analiza rozkładu obciążenia
         echo "\n=== Analiza rozkładu obciążenia ===\n";
-        $hoursDistribution = array_count_values($hourlyCoverage);
-        ksort($hoursDistribution);
+        $coverageDistribution = array_count_values(array_column($callCoverage, 'coverage'));
+        ksort($coverageDistribution);
         
-        echo "  - Rozkład godzin pracy:\n";
-        foreach ($hoursDistribution as $hours => $count) {
-            echo "    $hours godzin: $count przypisań\n";
+        echo "  - Rozkład pokrycia rozmów:\n";
+        foreach ($coverageDistribution as $coverage => $count) {
+            echo "    {$coverage}% pokrycia: $count dni\n";
         }
         
     } else {
@@ -499,7 +505,7 @@ class CallCenterScheduler
     private function calculateEfficiency($metrics)
     {
         // Prosty algorytm obliczania efektywności
-        $coverage = count(array_filter($metrics['hourlyCoverage'], fn($h) => $h > 0)) / count($metrics['hourlyCoverage']) * 100;
+        $coverage = count(array_filter($metrics['callCoverage'], fn($c) => $c['coverage'] > 0)) / count($metrics['callCoverage']) * 100;
         $balance = (1 - ($metrics['maxHoursPerAgent'] - $metrics['minHoursPerAgent']) / $metrics['maxHoursPerAgent']) * 100;
         
         return ($coverage + $balance) / 2;

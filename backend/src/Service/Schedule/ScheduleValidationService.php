@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Schedule;
 
-use App\DTO\CreateScheduleRequest;
+use App\DTO\Schedule\CreateScheduleRequest;
 use App\Exception\ScheduleValidationException;
 use App\Repository\ScheduleRepository;
 use App\Repository\QueueTypeRepository;

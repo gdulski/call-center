@@ -352,7 +352,7 @@ final readonly class ScheduleGenerationService
         
         // Sprawdź dostępność dla każdej godziny w dniu (od 8:00 do 18:00 - standardowe godziny pracy)
         for ($hour = 8; $hour <= 18; $hour++) {
-            $hourKey = $dayKey . ' ' . str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $hourKey = $dayKey . ' ' . str_pad((string)$hour, 2, '0', STR_PAD_LEFT) . ':00';
             
             if (isset($hourlyAvailabilities[$hourKey]) && in_array($agentId, $hourlyAvailabilities[$hourKey])) {
                 $totalHours += 1.0; // Agent dostępny przez całą godzinę
